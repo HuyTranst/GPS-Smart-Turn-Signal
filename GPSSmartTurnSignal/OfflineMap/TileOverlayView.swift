@@ -47,15 +47,15 @@ public struct OfflineMapView: UIViewRepresentable {
         let mapView = MKMapView(frame: .zero)
         mapView.delegate = context.coordinator
         mapView.showsUserLocation = true
-        mapView.userTrackingMode = .followWithHeading
         mapView.showsCompass = true
-        mapView.showsScale = true
+        mapView.showsScale = false
         
         // Cài đặt lớp bản đồ OpenStreetMap thay thế lớp nền mặc định
         let tileOverlay = OfflineMKTileOverlay()
         tileOverlay.canReplaceMapContent = true
         mapView.addOverlay(tileOverlay, level: .aboveLabels)
         
+        context.coordinator.mapView = mapView
         return mapView
     }
     
@@ -67,15 +67,13 @@ public struct OfflineMapView: UIViewRepresentable {
             context.coordinator.clearRoute(on: mapView)
         }
         
-        // Tự động giữ tâm bản đồ theo vị trí và góc nhìn đầu xe thời gian thực
+        // Tự động điều chỉnh góc zoom thông minh theo tốc độ (Không zoom giật liên tục)
         if let loc = locationManager.currentLocation {
-            let camera = MKMapCamera(
-                lookingAtCenter: loc.coordinate,
-                fromDistance: 450, // Zoom sát mặt đường trực quan khi lái xe
-                pitch: 45, // Góc nghiêng 3D quan sát ngã rẽ phía trước
-                heading: locationManager.currentCourse
+            context.coordinator.handleSmartAutoZoom(
+                location: loc,
+                speedKmh: locationManager.currentSpeedKmh,
+                course: locationManager.currentCourse
             )
-            mapView.setCamera(camera, animated: true)
         }
     }
     
@@ -85,11 +83,110 @@ public struct OfflineMapView: UIViewRepresentable {
     
     public class Coordinator: NSObject, MKMapViewDelegate {
         var parent: OfflineMapView
+        weak var mapView: MKMapView?
         private var currentPolyline: MKPolyline?
         private var maneuverAnnotations: [MKPointAnnotation] = []
         
+        // Quản lý Auto Zoom thông minh chống giật liên tục
+        private var lastZoomDistance: Double = 0.0
+        private var lastZoomTime: Date = Date.distantPast
+        private var hasInitialZoomed: Bool = false
+        
         init(_ parent: OfflineMapView) {
             self.parent = parent
+            super.init()
+            
+            NotificationCenter.default.addObserver(
+                forName: NSNotification.Name("RecenterMapOnUser"),
+                object: nil,
+                queue: .main
+            ) { [weak self] _ in
+                guard let self = self, let mv = self.mapView, let loc = LocationManager.shared.currentLocation else { return }
+                let targetDist = self.calculateTargetDistance(speedKmh: LocationManager.shared.currentSpeedKmh)
+                self.lastZoomDistance = targetDist
+                self.lastZoomTime = Date()
+                let cam = MKMapCamera(
+                    lookingAtCenter: loc.coordinate,
+                    fromDistance: targetDist,
+                    pitch: 35,
+                    heading: LocationManager.shared.currentCourse
+                )
+                mv.setCamera(cam, animated: true)
+            }
+        }
+        
+        /// Xử lý tự động zoom theo tốc độ di chuyển thực tế (Chống giật/chống zoom liên tục)
+        public func handleSmartAutoZoom(location: CLLocation, speedKmh: Double, course: Double) {
+            guard let mapView = mapView else { return }
+            
+            let now = Date()
+            
+            // 1. Khi vừa mở app: Zoom mượt vào vị trí hiện tại lần đầu tiên
+            if !hasInitialZoomed {
+                hasInitialZoomed = true
+                let initialDist = calculateTargetDistance(speedKmh: speedKmh)
+                lastZoomDistance = initialDist
+                lastZoomTime = now
+                
+                let camera = MKMapCamera(
+                    lookingAtCenter: location.coordinate,
+                    fromDistance: initialDist,
+                    pitch: 35,
+                    heading: course >= 0 ? course : 0
+                )
+                mapView.setCamera(camera, animated: true)
+                return
+            }
+            
+            // 2. Tự động tính toán cự ly zoom tối ưu theo dải tốc độ:
+            // - Dưới 15 km/h (vào ngã rẽ, dừng đèn đỏ): zoom gần (~420m) nhìn rõ góc đường
+            // - 15 - 45 km/h (chạy phố bình thường): zoom vừa (~650m)
+            // - Trên 45 km/h (đường thoáng, đại lộ): zoom xa (~950m) bao quát
+            let targetDist = calculateTargetDistance(speedKmh: speedKmh)
+            
+            // CHỐNG ZOOM LIÊN TỤC:
+            // Chỉ tự động zoom khi dải tốc độ thay đổi đáng kể (chênh lệch cự ly >= 150m) VÀ cách lần zoom trước tối thiểu 6 giây!
+            let delta = abs(targetDist - lastZoomDistance)
+            let timeSinceLast = now.timeIntervalSince(lastZoomTime)
+            
+            if delta >= 150.0 && timeSinceLast >= 6.0 {
+                lastZoomDistance = targetDist
+                lastZoomTime = now
+                
+                let heading = course >= 0 ? course : mapView.camera.heading
+                let camera = MKMapCamera(
+                    lookingAtCenter: location.coordinate,
+                    fromDistance: targetDist,
+                    pitch: 35,
+                    heading: heading
+                )
+                
+                UIView.animate(withDuration: 1.5) {
+                    mapView.setCamera(camera, animated: true)
+                }
+            } else if timeSinceLast >= 2.0 {
+                // Giữ nguyên mức zoom hiện tại, chỉ di chuyển tâm xe mượt mà
+                let currentDistance = mapView.camera.centerCoordinateDistance
+                let heading = course >= 0 ? course : mapView.camera.heading
+                let camera = MKMapCamera(
+                    lookingAtCenter: location.coordinate,
+                    fromDistance: currentDistance > 100 ? currentDistance : targetDist,
+                    pitch: 35,
+                    heading: heading
+                )
+                mapView.setCamera(camera, animated: true)
+            }
+        }
+        
+        /// Tính toán khoảng cách zoom camera theo tốc độ xe
+        private func calculateTargetDistance(speedKmh: Double) -> Double {
+            if speedKmh < 15.0 {
+                return 420.0 // Zoom sát khi đi chậm, dừng hoặc sắp bẻ lái ngã rẽ
+            } else if speedKmh < 45.0 {
+                return 650.0 // Zoom vừa khi lưu thông trong phố
+            } else {
+                return 950.0 // Zoom rộng khi chạy đường trường/đại lộ
+            }
         }
         
         public func mapView(_ mapView: MKMapView, rendererFor overlay: MKOverlay) -> MKOverlayRenderer {

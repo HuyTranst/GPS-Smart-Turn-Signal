@@ -32,6 +32,24 @@ public struct MainDashboardView: View {
                 
                 Spacer()
                 
+                // Nút bấm định vị lại tâm xe và kích hoạt lại auto zoom
+                HStack {
+                    Spacer()
+                    Button(action: {
+                        NotificationCenter.default.post(name: NSNotification.Name("RecenterMapOnUser"), object: nil)
+                    }) {
+                        Image(systemName: "location.fill")
+                            .font(.system(size: 16, weight: .bold))
+                            .foregroundColor(.white)
+                            .frame(width: 42, height: 42)
+                            .background(Color.black.opacity(0.8))
+                            .clipShape(Circle())
+                            .overlay(Circle().stroke(Color.white.opacity(0.25), lineWidth: 1))
+                            .shadow(radius: 4)
+                    }
+                }
+                .padding(.trailing, 4)
+                
                 // Đèn xi nhan nhấp nháy mô phỏng taplo xe
                 TurnIndicatorWidget()
                     .padding(.horizontal)
