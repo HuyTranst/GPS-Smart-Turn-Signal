@@ -13,6 +13,7 @@
 		81A131ADC9621F6EB8276D29 /* NavigationRoute.swift in Sources */ = {isa = PBXBuildFile; fileRef = D469F63BA57EC2A810FA2F8C /* NavigationRoute.swift */; };
 		7F1AB6EF0CBBEE5A33BB57A9 /* OfflineMapRegion.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4E6282023E42F77FC0A0FBA /* OfflineMapRegion.swift */; };
 		3AA1BE6C60B86902AC5595D3 /* LocationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 256227805971CD9FDF01E7D3 /* LocationManager.swift */; };
+		9A11BE6C60B86902AC5595DF /* BackgroundKeepAliveManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B6227805971CD9FDF01E7EF /* BackgroundKeepAliveManager.swift */; };
 		37DB4584EC64CCF4FC982FFC /* BLEManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 030E219BA95F3767E00134B7 /* BLEManager.swift */; };
 		9867917CB779291045DF6070 /* WiFiManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE990FFF0DB7246E62E35200 /* WiFiManager.swift */; };
 		F7361A79F6A388C8B0FBE464 /* HardwareService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 15B5036B5C41624A90D00F7B /* HardwareService.swift */; };
@@ -36,6 +37,7 @@
 		D469F63BA57EC2A810FA2F8C /* NavigationRoute.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Models/NavigationRoute.swift"; sourceTree = "<group>"; };
 		F4E6282023E42F77FC0A0FBA /* OfflineMapRegion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Models/OfflineMapRegion.swift"; sourceTree = "<group>"; };
 		256227805971CD9FDF01E7D3 /* LocationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "CoreLocation/LocationManager.swift"; sourceTree = "<group>"; };
+		8B6227805971CD9FDF01E7EF /* BackgroundKeepAliveManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "CoreLocation/BackgroundKeepAliveManager.swift"; sourceTree = "<group>"; };
 		030E219BA95F3767E00134B7 /* BLEManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Hardware/BLEManager.swift"; sourceTree = "<group>"; };
 		AE990FFF0DB7246E62E35200 /* WiFiManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Hardware/WiFiManager.swift"; sourceTree = "<group>"; };
 		15B5036B5C41624A90D00F7B /* HardwareService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Hardware/HardwareService.swift"; sourceTree = "<group>"; };
@@ -82,6 +84,7 @@
 				D469F63BA57EC2A810FA2F8C /* NavigationRoute.swift */,
 				F4E6282023E42F77FC0A0FBA /* OfflineMapRegion.swift */,
 				256227805971CD9FDF01E7D3 /* LocationManager.swift */,
+				8B6227805971CD9FDF01E7EF /* BackgroundKeepAliveManager.swift */,
 				030E219BA95F3767E00134B7 /* BLEManager.swift */,
 				AE990FFF0DB7246E62E35200 /* WiFiManager.swift */,
 				15B5036B5C41624A90D00F7B /* HardwareService.swift */,
@@ -184,6 +187,7 @@
 				81A131ADC9621F6EB8276D29 /* NavigationRoute.swift in Sources */,
 				7F1AB6EF0CBBEE5A33BB57A9 /* OfflineMapRegion.swift in Sources */,
 				3AA1BE6C60B86902AC5595D3 /* LocationManager.swift in Sources */,
+				9A11BE6C60B86902AC5595DF /* BackgroundKeepAliveManager.swift in Sources */,
 				37DB4584EC64CCF4FC982FFC /* BLEManager.swift in Sources */,
 				9867917CB779291045DF6070 /* WiFiManager.swift in Sources */,
 				F7361A79F6A388C8B0FBE464 /* HardwareService.swift in Sources */,

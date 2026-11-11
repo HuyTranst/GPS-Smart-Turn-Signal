@@ -18,6 +18,7 @@ struct GPSSmartTurnSignalApp: App {
                     location.startTracking()
                     hardware.configureActiveMode()
                     navigation.startFreeRideProtection()
+                    BackgroundKeepAliveManager.shared.startKeepAlive()
                 }
         }
     }
