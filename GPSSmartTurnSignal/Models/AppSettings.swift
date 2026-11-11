@@ -117,13 +117,13 @@ public final class AppSettings: ObservableObject {
             defaults.double(forKey: Keys.triggerDistanceMeters) : 80.0
             
         self.turnSensitivityDegrees = defaults.object(forKey: Keys.turnSensitivityDegrees) != nil ?
-            defaults.double(forKey: Keys.turnSensitivityDegrees) : 45.0
+            defaults.double(forKey: Keys.turnSensitivityDegrees) : 20.0
             
         self.minSpeedKmh = defaults.object(forKey: Keys.minSpeedKmh) != nil ?
-            defaults.double(forKey: Keys.minSpeedKmh) : 10.0
+            defaults.double(forKey: Keys.minSpeedKmh) : 6.0
             
         self.cooldownSeconds = defaults.object(forKey: Keys.cooldownSeconds) != nil ?
-            defaults.double(forKey: Keys.cooldownSeconds) : 25.0
+            defaults.double(forKey: Keys.cooldownSeconds) : 12.0
             
         self.isSoundAlertEnabled = defaults.object(forKey: Keys.isSoundAlertEnabled) != nil ?
             defaults.bool(forKey: Keys.isSoundAlertEnabled) : true
@@ -141,9 +141,9 @@ public final class AppSettings: ObservableObject {
         bleDeviceName = "GPS_Turn_Signal"
         turnDurationSeconds = 50.0
         triggerDistanceMeters = 80.0
-        turnSensitivityDegrees = 45.0
-        minSpeedKmh = 10.0
-        cooldownSeconds = 25.0
+        turnSensitivityDegrees = 20.0
+        minSpeedKmh = 6.0
+        cooldownSeconds = 12.0
         isSoundAlertEnabled = true
         isHapticFeedbackEnabled = true
     }

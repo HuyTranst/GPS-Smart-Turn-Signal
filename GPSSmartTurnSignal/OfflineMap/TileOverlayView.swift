@@ -67,12 +67,12 @@ public struct OfflineMapView: UIViewRepresentable {
             context.coordinator.clearRoute(on: mapView)
         }
         
-        // Giữ tâm bản đồ theo vị trí xe khi đang dẫn đường
-        if navigationEngine.isNavigating, let loc = locationManager.currentLocation {
+        // Tự động giữ tâm bản đồ theo vị trí và góc nhìn đầu xe thời gian thực
+        if let loc = locationManager.currentLocation {
             let camera = MKMapCamera(
                 lookingAtCenter: loc.coordinate,
-                fromDistance: 600, // Zoom sát mặt đất khi lái xe
-                pitch: 45, // Góc nghiêng 3D dễ quan sát hướng rẽ
+                fromDistance: 450, // Zoom sát mặt đường trực quan khi lái xe
+                pitch: 45, // Góc nghiêng 3D quan sát ngã rẽ phía trước
                 heading: locationManager.currentCourse
             )
             mapView.setCamera(camera, animated: true)

@@ -2,16 +2,23 @@ import Foundation
 import CoreLocation
 import Combine
 
-/// Động cơ phân tích dẫn đường và nhận diện nút giao rẽ xi nhan thông minh
+/// Động cơ nhận diện ngã rẽ thông minh tự động (Chế độ tự do không cần nhập tuyến đường)
 public final class NavigationEngine: ObservableObject {
     public static let shared = NavigationEngine()
     
-    // MARK: - Published Properties
+    // MARK: - Chế độ Giám sát Tự do (Free Ride Mode - Mặc định)
+    @Published public var isAutoProtectActive: Bool = true
+    @Published public var detectedTurnState: TurnSignalState = .off
+    @Published public var currentTurnAngleDelta: Double = 0.0 // Góc bẻ lái so với hướng thẳng
+    @Published public var baselineHeading: Double = 0.0 // Hướng thẳng làm mốc ban đầu
+    @Published public var alertBannerText: String = "🛡️ Chế độ tự động bảo vệ: Đang canh chừng ngã rẽ"
+    
+    // MARK: - Chế độ Dẫn đường Lộ trình (Tùy chọn)
     @Published public var isNavigating: Bool = false
     @Published public var activeRoute: NavigationRoute?
     @Published public var currentManeuver: RouteManeuver?
-    @Published public var distanceToNextManeuver: Double = 0.0 // Mét
-    @Published public var remainingTripDistance: Double = 0.0 // Mét
+    @Published public var distanceToNextManeuver: Double = 0.0
+    @Published public var remainingTripDistance: Double = 0.0
     @Published public var isOffRoute: Bool = false
     @Published public var simulationActive: Bool = false
     
@@ -20,11 +27,20 @@ public final class NavigationEngine: ObservableObject {
     private let settings = AppSettings.shared
     private var cancellables = Set<AnyCancellable>()
     
-    // Timer mô phỏng GPS chạy thử khi đứng yên
+    // Biến nội bộ thuật toán nhận diện rẽ tự do
+    private var hasEstablishedBaseline = false
+    private var straightCourseCount = 0
+    private var turnStartHeading: Double = 0.0
+    private var turnCompletionSteadyCount = 0
+    private var lastRecordedCourse: Double = 0.0
+    
+    // Simulation Timer
     private var simulationTimer: Timer?
     private var simulationIndex: Int = 0
     
     private init() {
+        startFreeRideProtection()
+        
         locationManager.$currentLocation
             .compactMap { $0 }
             .sink { [weak self] location in
@@ -33,27 +49,177 @@ public final class NavigationEngine: ObservableObject {
             .store(in: &cancellables)
     }
     
+    // MARK: - Khởi Động Chế Độ Tự Do
+    
+    /// Bật chế độ tự động canh ngã rẽ liên tục khi lái xe
+    public func startFreeRideProtection() {
+        isAutoProtectActive = true
+        hasEstablishedBaseline = false
+        straightCourseCount = 0
+        turnCompletionSteadyCount = 0
+        locationManager.startTracking()
+        print("Free-ride Auto Protection ACTIVE")
+    }
+    
+    // MARK: - Xử Lý GPS Thời Gian Thực
+    
+    private func processLocationUpdate(_ location: CLLocation) {
+        guard settings.isAutoSignalEnabled else { return }
+        
+        // NẾU CÓ TUYẾN ĐƯỜNG CỐ ĐỊNH -> CHẠY THUẬT TOÁN ĐIỂM GIAO LỘ
+        if isNavigating, activeRoute != nil {
+            processRouteManeuvers(location: location)
+            return
+        }
+        
+        // CHẾ ĐỘ TỰ DO (FREE RIDE - DÙNG HẰNG NGÀY KHÔNG CẦN CHỌN ĐƯỜNG):
+        processFreeRideTurnDetection(location: location)
+    }
+    
+    /// Thuật toán tự động nhận diện xe bẻ lái vào ngã rẽ khi chạy tự do trên đường
+    private func processFreeRideTurnDetection(location: CLLocation) {
+        let speed = locationManager.currentSpeedKmh
+        let course = locationManager.currentCourse
+        
+        // 1. Nếu xe đứng yên hoặc đi quá chậm (< minSpeedKmh): bỏ qua để tránh trôi GPS
+        guard speed >= settings.minSpeedKmh else {
+            // Khi dừng đèn đỏ, giữ nguyên trạng thái mốc
+            return
+        }
+        
+        // 2. Khởi tạo mốc hướng đi thẳng đầu tiên khi xe bắt đầu lăn bánh
+        if !hasEstablishedBaseline {
+            baselineHeading = course
+            lastRecordedCourse = course
+            hasEstablishedBaseline = true
+            straightCourseCount = 0
+            alertBannerText = "🛡️ Đang giám sát chuyển hướng tự động..."
+            return
+        }
+        
+        // 3. Tính góc lệch tức thời giữa hướng di chuyển hiện tại và hướng thẳng mốc ban đầu
+        let delta = normalizeAngle(course - baselineHeading)
+        self.currentTurnAngleDelta = delta
+        
+        // 4. KHI CHƯA BẬT XI NHAN (ĐANG ĐI THẲNG TRÊN ĐƯỜNG):
+        if turnController.currentState == .off {
+            // Nếu xe vẫn đi thẳng (góc lệch nhỏ < 7 độ): Cập nhật mốc hướng đường mới dần dần
+            if abs(delta) < 7.0 {
+                straightCourseCount += 1
+                if straightCourseCount >= 3 {
+                    // Xe đang chạy thẳng ổn định trên một đoạn phố
+                    baselineHeading = normalize360(baselineHeading * 0.7 + course * 0.3)
+                    straightCourseCount = 0
+                    alertBannerText = "🚗 Đang chạy thẳng (\(Int(speed)) km/h) - Sẵn sàng tự bật xi nhan"
+                }
+            }
+            // PHÁT HIỆN BẮT ĐẦU RẼ PHẢI:
+            else if delta >= settings.turnSensitivityDegrees { // Mặc định >= 20 độ sang phải
+                turnStartHeading = baselineHeading
+                turnCompletionSteadyCount = 0
+                detectedTurnState = .right
+                alertBannerText = "🚨 ĐANG RẼ PHẢI - ĐÃ TỰ BẬT XI NHAN PHẢI!"
+                print(">>> TỰ ĐỘNG PHÁT HIỆN RẼ PHẢI (Delta: +\(Int(delta))°)")
+                turnController.triggerNavigationTurn(isLeft: false, distanceToJunction: 0)
+            }
+            // PHÁT HIỆN BẮT ĐẦU RẼ TRÁI:
+            else if delta <= -settings.turnSensitivityDegrees { // Mặc định <= -20 độ sang trái
+                turnStartHeading = baselineHeading
+                turnCompletionSteadyCount = 0
+                detectedTurnState = .left
+                alertBannerText = "🚨 ĐANG RẼ TRÁI - ĐÃ TỰ BẬT XI NHAN TRÁI!"
+                print(">>> TỰ ĐỘNG PHÁT HIỆN RẼ TRÁI (Delta: \(Int(delta))°)")
+                turnController.triggerNavigationTurn(isLeft: true, distanceToJunction: 0)
+            }
+        }
+        // 5. KHI ĐANG BẬT XI NHAN (XE ĐANG TRONG KHÚC RẼ):
+        else {
+            let totalTurned = abs(normalizeAngle(course - turnStartHeading))
+            let courseJitter = abs(normalizeAngle(course - lastRecordedCourse))
+            
+            // Nếu xe đã rẽ một góc đáng kể (>= 40 độ) và đầu xe đã thẳng hàng trên đường mới (courseJitter < 6 độ)
+            if totalTurned >= 40.0 && courseJitter < 6.0 {
+                turnCompletionSteadyCount += 1
+                // Nếu hướng xe ổn định 3 lần cập nhật liên tiếp trên đường mới -> TẮT XI NHAN!
+                if turnCompletionSteadyCount >= 3 {
+                    print("<<< XE ĐÃ HOÀN THÀNH RẼ VÀ ĐI THẲNG TRÊN ĐƯỜNG MỚI -> TỰ TẮT XI NHAN")
+                    turnController.turnOff()
+                    baselineHeading = course
+                    detectedTurnState = .off
+                    alertBannerText = "✅ ĐÃ QUA NGÃ RẼ - ĐÃ TẮT XI NHAN"
+                    turnCompletionSteadyCount = 0
+                }
+            }
+        }
+        
+        lastRecordedCourse = course
+    }
+    
+    // MARK: - Thuật toán theo Lộ trình có sẵn (Khi người dùng chọn Tuyến đường)
+    
+    private func processRouteManeuvers(location: CLLocation) {
+        guard var route = activeRoute else { return }
+        
+        guard let maneuverIndex = route.maneuvers.firstIndex(where: { !$0.isCompleted }) else {
+            stopNavigation()
+            return
+        }
+        
+        var maneuver = route.maneuvers[maneuverIndex]
+        self.currentManeuver = maneuver
+        
+        let maneuverLoc = CLLocation(latitude: maneuver.point.latitude, longitude: maneuver.point.longitude)
+        let distance = location.distance(from: maneuverLoc)
+        self.distanceToNextManeuver = distance
+        
+        let bearingToJunction = calculateBearing(from: location.coordinate, to: maneuverLoc.coordinate)
+        let vehicleCourse = locationManager.currentCourse
+        let speedKmh = locationManager.currentSpeedKmh
+        let angleDiff = abs(normalizeAngle(vehicleCourse - bearingToJunction))
+        
+        let isWithinTriggerDistance = distance <= settings.triggerDistanceMeters && distance >= 8.0
+        let isSpeedValid = speedKmh >= settings.minSpeedKmh
+        let isTurnAngleSignificant = abs(maneuver.turnAngleDegrees) >= settings.turnSensitivityDegrees
+        let isHeadingTowardJunction = angleDiff <= 55.0
+        
+        if !maneuver.isTriggered && isWithinTriggerDistance && isSpeedValid && isTurnAngleSignificant && isHeadingTowardJunction {
+            maneuver.isTriggered = true
+            route.maneuvers[maneuverIndex] = maneuver
+            self.activeRoute = route
+            
+            let isLeft = maneuver.type.isTurnLeft
+            turnController.triggerNavigationTurn(isLeft: isLeft, distanceToJunction: distance)
+            alertBannerText = isLeft ? "🚨 CHUẨN BỊ RẼ TRÁI - XI NHAN BẬT" : "🚨 CHUẨN BỊ RẼ PHẢI - XI NHAN BẬT"
+        }
+        
+        if maneuver.isTriggered && (distance <= 12.0 || (distance < 25.0 && angleDiff > 90.0)) {
+            maneuver.isCompleted = true
+            route.maneuvers[maneuverIndex] = maneuver
+            self.activeRoute = route
+            turnController.turnOff()
+            alertBannerText = "✅ ĐÃ QUA GIAO LỘ - XI NHAN TẮT"
+            
+            if maneuverIndex + 1 < route.maneuvers.count {
+                self.currentManeuver = route.maneuvers[maneuverIndex + 1]
+            }
+        }
+    }
+    
     // MARK: - Public Route Controls
     
-    /// Bắt đầu hành trình dẫn đường
     public func startNavigation(route: NavigationRoute) {
         var mutableRoute = route
-        // Reset trạng thái các nút giao
         for i in 0..<mutableRoute.maneuvers.count {
             mutableRoute.maneuvers[i].isTriggered = false
             mutableRoute.maneuvers[i].isCompleted = false
         }
-        
         self.activeRoute = mutableRoute
         self.isNavigating = true
         self.currentManeuver = mutableRoute.maneuvers.first
         self.remainingTripDistance = mutableRoute.totalDistanceMeters
-        
         locationManager.startTracking()
-        print("Navigation started: \(route.title)")
     }
     
-    /// Kết thúc hành trình dẫn đường
     public func stopNavigation() {
         isNavigating = false
         activeRoute = nil
@@ -62,80 +228,11 @@ public final class NavigationEngine: ObservableObject {
         remainingTripDistance = 0
         stopSimulation()
         turnController.turnOff()
-        print("Navigation stopped")
-    }
-    
-    // MARK: - GPS Analysis & Turn Detection Logic
-    
-    private func processLocationUpdate(_ location: CLLocation) {
-        guard isNavigating, var route = activeRoute else { return }
-        
-        // 1. Tìm ngã rẽ tiếp theo chưa hoàn thành
-        guard let maneuverIndex = route.maneuvers.firstIndex(where: { !$0.isCompleted }) else {
-            // Đã đi qua hết tất cả các nút giao -> Kết thúc chuyến đi
-            stopNavigation()
-            return
-        }
-        
-        var maneuver = route.maneuvers[maneuverIndex]
-        self.currentManeuver = maneuver
-        
-        // 2. Tính khoảng cách địa lý thực tế từ xe đến ngã rẽ
-        let maneuverLoc = CLLocation(latitude: maneuver.point.latitude, longitude: maneuver.point.longitude)
-        let distance = location.distance(from: maneuverLoc)
-        self.distanceToNextManeuver = distance
-        
-        // 3. Tính góc phương vị từ xe hướng tới giao lộ
-        let bearingToJunction = calculateBearing(from: location.coordinate, to: maneuverLoc.coordinate)
-        let vehicleCourse = locationManager.currentCourse
-        let speedKmh = locationManager.currentSpeedKmh
-        
-        // Góc lệch giữa hướng đầu xe và hướng tới giao lộ (đảm bảo xe đang tiến lại gần, không phải đi ra xa)
-        let angleDiff = abs(normalizeAngle(vehicleCourse - bearingToJunction))
-        
-        // 4. KIỂM TRA ĐIỀU KIỆN KÍCH HOẠT XI NHAN
-        // Tiêu chí chống báo sai theo yêu cầu khắt khe của dự án:
-        // - Khoảng cách nằm trong ngưỡng cấu hình (ví dụ <= 80m)
-        // - Nút giao chưa từng được kích hoạt trước đó
-        // - Tốc độ GPS đạt mức tối thiểu (ví dụ >= 10 km/h) để loại bỏ sai số khi đứng yên hoặc chỉnh giá đỡ điện thoại
-        // - Góc bẻ lái của tuyến đường phải đủ lớn (ví dụ >= 45 độ) để phân biệt ngã rẽ thật với đường cong uốn lượn
-        // - Xe thực sự đang hướng về giao lộ (angleDiff <= 55 độ)
-        let isWithinTriggerDistance = distance <= settings.triggerDistanceMeters && distance >= 8.0
-        let isSpeedValid = speedKmh >= settings.minSpeedKmh
-        let isTurnAngleSignificant = abs(maneuver.turnAngleDegrees) >= settings.turnSensitivityDegrees
-        let isHeadingTowardJunction = angleDiff <= 55.0
-        
-        if !maneuver.isTriggered && isWithinTriggerDistance && isSpeedValid && isTurnAngleSignificant && isHeadingTowardJunction {
-            // Đánh dấu đã kích hoạt
-            maneuver.isTriggered = true
-            route.maneuvers[maneuverIndex] = maneuver
-            self.activeRoute = route
-            
-            let isLeft = maneuver.type.isTurnLeft
-            print(">>> KÍCH HOẠT XI NHAN \(isLeft ? "TRÁI" : "PHẢI") tại khoảng cách \(Int(distance))m, góc rẽ: \(maneuver.turnAngleDegrees)°")
-            turnController.triggerNavigationTurn(isLeft: isLeft, distanceToJunction: distance)
-        }
-        
-        // 5. KIỂM TRA ĐIỀU KIỆN HOÀN THÀNH RẼ (TỰ TẮT XI NHAN)
-        // Xe đã vượt qua ngã rẽ (khoảng cách <= 12m hoặc xe đã đi qua và đang hướng theo đoạn đường mới)
-        if maneuver.isTriggered && (distance <= 12.0 || (distance < 25.0 && angleDiff > 90.0)) {
-            maneuver.isCompleted = true
-            route.maneuvers[maneuverIndex] = maneuver
-            self.activeRoute = route
-            
-            print("<<< ĐÃ QUA NGÃ RẼ -> Tắt xi nhan")
-            turnController.turnOff()
-            
-            // Chuyển sang nút giao tiếp theo
-            if maneuverIndex + 1 < route.maneuvers.count {
-                self.currentManeuver = route.maneuvers[maneuverIndex + 1]
-            }
-        }
+        startFreeRideProtection()
     }
     
     // MARK: - Mathematical Geodesic Helpers
     
-    /// Tính góc phương vị từ điểm A đến điểm B (0 - 360 độ)
     private func calculateBearing(from start: CLLocationCoordinate2D, to dest: CLLocationCoordinate2D) -> Double {
         let lat1 = start.latitude * .pi / 180.0
         let lon1 = start.longitude * .pi / 180.0
@@ -146,11 +243,9 @@ public final class NavigationEngine: ObservableObject {
         let y = sin(dLon) * cos(lat2)
         let x = cos(lat1) * sin(lat2) - sin(lat1) * cos(lat2) * cos(dLon)
         let radians = atan2(y, x)
-        let degrees = (radians * 180.0 / .pi + 360.0).truncatingRemainder(dividingBy: 360.0)
-        return degrees
+        return (radians * 180.0 / .pi + 360.0).truncatingRemainder(dividingBy: 360.0)
     }
     
-    /// Chuẩn hóa góc về khoảng -180 đến +180 độ
     private func normalizeAngle(_ angle: Double) -> Double {
         var a = angle.truncatingRemainder(dividingBy: 360.0)
         if a > 180.0 { a -= 360.0 }
@@ -158,9 +253,12 @@ public final class NavigationEngine: ObservableObject {
         return a
     }
     
-    // MARK: - Simulation Mode (Dành cho việc test trên bàn làm việc không cần chạy xe)
+    private func normalize360(_ angle: Double) -> Double {
+        return (angle.truncatingRemainder(dividingBy: 360.0) + 360.0).truncatingRemainder(dividingBy: 360.0)
+    }
     
-    /// Bắt đầu giả lập hành trình mẫu
+    // MARK: - Simulation Mode
+    
     public func startSimulation(route: NavigationRoute) {
         stopSimulation()
         startNavigation(route: route)
@@ -181,16 +279,14 @@ public final class NavigationEngine: ObservableObject {
                 horizontalAccuracy: 5,
                 verticalAccuracy: 5,
                 course: 45.0,
-                speed: 35.0 / 3.6, // 35 km/h
+                speed: 35.0 / 3.6,
                 timestamp: Date()
             )
-            
             self.locationManager.locationManager(CLLocationManager(), didUpdateLocations: [mockLoc])
             self.simulationIndex += 1
         }
     }
     
-    /// Dừng mô phỏng
     public func stopSimulation() {
         simulationTimer?.invalidate()
         simulationTimer = nil

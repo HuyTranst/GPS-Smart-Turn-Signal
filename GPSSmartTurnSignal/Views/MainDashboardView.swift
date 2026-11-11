@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Màn hình điều khiển chính (Dashboard) chuẩn HUD dành cho tài xế khi gắn máy trên xe
+/// Màn hình điều khiển chính (Dashboard) tự động bảo vệ tài xế khi qua ngã rẽ
 public struct MainDashboardView: View {
     @ObservedObject var locationManager = LocationManager.shared
     @ObservedObject var navigation = NavigationEngine.shared
@@ -18,33 +18,30 @@ public struct MainDashboardView: View {
     
     public var body: some View {
         ZStack {
-            // 1. Bản đồ OpenStreetMap Offline toàn màn hình
+            // 1. Bản đồ OpenStreetMap Offline toàn màn hình - Tự động định vị và xoay theo đầu xe
             OfflineMapView()
                 .edgesIgnoringSafeArea(.all)
             
             // 2. Lớp giao diện HUD điều khiển nổi
             VStack(spacing: 12) {
-                // Header phía trên: Thông số tốc độ, GPS và Trạng thái ESP32
+                // Header phía trên: Đồng hồ tốc độ lớn, GPS và Trạng thái ESP32
                 topStatusBar
                 
-                // Thẻ chỉ dẫn ngã rẽ tiếp theo (Chỉ hiện khi đang dẫn đường)
-                if navigation.isNavigating, let maneuver = navigation.currentManeuver {
-                    maneuverCard(maneuver: maneuver)
-                        .transition(.move(edge: .top).combined(with: .opacity))
-                }
+                // Banner Cảnh Báo Trạng Thái Ngã Rẽ Thời Gian Thực
+                statusAlertBanner
                 
                 Spacer()
                 
-                // Đèn xi nhan nhấp nháy trực quan trên màn hình
+                // Đèn xi nhan nhấp nháy mô phỏng taplo xe
                 TurnIndicatorWidget()
                     .padding(.horizontal)
-                    .padding(.bottom, 6)
+                    .padding(.bottom, 4)
                 
-                // Thanh điều khiển hành trình và các nút chức năng
-                bottomControlBar
+                // Cụm phím điều khiển chạm nhanh & khẩn cấp khi thấy chốt CSGT
+                bottomEmergencyControlBar
             }
             .padding(.horizontal, 14)
-            .padding(.top, 44) // Tránh tai thỏ/Dynamic Island
+            .padding(.top, 44) // Tránh Dynamic Island / Tai thỏ
             .padding(.bottom, 16)
         }
         .sheet(isPresented: $showingSettings) { SettingsView() }
@@ -52,7 +49,11 @@ public struct MainDashboardView: View {
         .sheet(isPresented: $showingOfflineMaps) { OfflineMapManagerView() }
         .sheet(isPresented: $showingRoutePlanner) { RoutePlannerView() }
         .onAppear {
+            // TỰ ĐỘNG KHỞI CHẠY TOÀN BỘ NGAY KHI MỞ APP (KHÔNG CẦN BẤM NÚT NÀO)
             locationManager.requestPermissions()
+            locationManager.startTracking()
+            hardware.configureActiveMode()
+            navigation.startFreeRideProtection()
         }
     }
     
@@ -72,12 +73,12 @@ public struct MainDashboardView: View {
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 6)
-            .background(Color.black.opacity(0.75))
+            .background(Color.black.opacity(0.8))
             .cornerRadius(12)
             
             Spacer()
             
-            // Trạng thái ESP32
+            // Trạng thái kết nối ESP32
             Button(action: { showingHardwareTest = true }) {
                 HStack(spacing: 6) {
                     Image(systemName: settings.connectionMode == .bluetooth ? "antenna.radiowaves.left.and.right" : "wifi")
@@ -85,17 +86,17 @@ public struct MainDashboardView: View {
                     Circle()
                         .fill(hardware.connectionStatus == .connected ? Color.green : Color.red)
                         .frame(width: 8, height: 8)
-                    Text(hardware.connectionStatus == .connected ? "ESP32 SẴN SÀNG" : "MẤT ESP32")
+                    Text(hardware.connectionStatus == .connected ? "ESP32 SẴN SÀNG" : "MẤT KẾT NỐI")
                         .font(.system(size: 11, weight: .bold))
                         .foregroundColor(.white)
                 }
                 .padding(.horizontal, 10)
                 .padding(.vertical, 8)
-                .background(Color.black.opacity(0.75))
+                .background(Color.black.opacity(0.8))
                 .cornerRadius(12)
             }
             
-            // Chất lượng GPS
+            // La bàn hướng di chuyển
             HStack(spacing: 4) {
                 Image(systemName: "location.north.line.fill")
                     .rotationEffect(.degrees(locationManager.currentCourse))
@@ -106,116 +107,126 @@ public struct MainDashboardView: View {
             }
             .padding(.horizontal, 10)
             .padding(.vertical, 8)
-            .background(Color.black.opacity(0.75))
+            .background(Color.black.opacity(0.8))
             .cornerRadius(12)
         }
     }
     
-    /// Thẻ HUD hiển thị ngã rẽ và khoảng cách đếm ngược
-    private func maneuverCard(maneuver: RouteManeuver) -> some View {
-        HStack(spacing: 16) {
-            // Biểu tượng mũi tên rẽ lớn
-            Image(systemName: maneuver.type.iconName)
-                .font(.system(size: 42, weight: .bold))
-                .foregroundColor(maneuver.type.isTurnLeft ? .green : (maneuver.type.isTurnRight ? .green : .blue))
-                .frame(width: 54, height: 54)
-            
-            VStack(alignment: .leading, spacing: 3) {
-                HStack(alignment: .lastTextBaseline, spacing: 4) {
-                    Text(formatDistance(navigation.distanceToNextManeuver))
-                        .font(.system(size: 32, weight: .heavy, design: .rounded))
-                        .foregroundColor(.white)
-                    Text("tới điểm rẽ")
-                        .font(.system(size: 13, weight: .medium))
-                        .foregroundColor(.white.opacity(0.8))
+    /// Banner trạng thái giám sát ngã rẽ thông minh
+    private var statusAlertBanner: some View {
+        VStack(spacing: 4) {
+            if controller.currentState == .left {
+                HStack(spacing: 8) {
+                    Image(systemName: "arrowtriangle.backward.fill")
+                        .font(.title2.bold())
+                    Text("ĐANG RẼ TRÁI - XI NHAN ĐANG BẬT!")
+                        .font(.headline.bold())
+                    Image(systemName: "arrowtriangle.backward.fill")
+                        .font(.title2.bold())
                 }
-                
-                Text(maneuver.instruction)
-                    .font(.system(size: 15, weight: .bold))
-                    .foregroundColor(.yellow)
-                    .lineLimit(1)
+                .foregroundColor(.white)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 10)
+                .background(Color.green)
+                .cornerRadius(12)
+                .shadow(color: .green.opacity(0.5), radius: 8)
+            } else if controller.currentState == .right {
+                HStack(spacing: 8) {
+                    Image(systemName: "arrowtriangle.forward.fill")
+                        .font(.title2.bold())
+                    Text("ĐANG RẼ PHẢI - XI NHAN ĐANG BẬT!")
+                        .font(.headline.bold())
+                    Image(systemName: "arrowtriangle.forward.fill")
+                        .font(.title2.bold())
+                }
+                .foregroundColor(.white)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 10)
+                .background(Color.green)
+                .cornerRadius(12)
+                .shadow(color: .green.opacity(0.5), radius: 8)
+            } else {
+                HStack(spacing: 8) {
+                    Circle()
+                        .fill(Color.green)
+                        .frame(width: 8, height: 8)
+                    Text(navigation.alertBannerText)
+                        .font(.subheadline.bold())
+                        .foregroundColor(.white)
+                        .lineLimit(1)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 8)
+                .padding(.horizontal, 12)
+                .background(Color.black.opacity(0.8))
+                .cornerRadius(12)
             }
-            
-            Spacer()
-            
-            // Góc bẻ lái
-            VStack {
-                Text("\(Int(abs(maneuver.turnAngleDegrees)))°")
-                    .font(.system(size: 14, weight: .heavy))
-                    .foregroundColor(.white)
-                Text(maneuver.turnAngleDegrees < 0 ? "Trái" : "Phải")
-                    .font(.system(size: 10, weight: .bold))
-                    .foregroundColor(.white.opacity(0.7))
-            }
-            .padding(6)
-            .background(Color.white.opacity(0.15))
-            .cornerRadius(8)
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 12)
-        .background(Color.black.opacity(0.85))
-        .cornerRadius(16)
-        .overlay(
-            RoundedRectangle(cornerRadius: 16)
-                .stroke(maneuver.isTriggered ? Color.green : Color.white.opacity(0.2), lineWidth: 2)
-        )
     }
     
-    /// Thanh điều khiển phía dưới đáy màn hình
-    private var bottomControlBar: some View {
+    /// Cụm phím điều khiển chạm nhanh 50m tránh chốt phạt
+    private var bottomEmergencyControlBar: some View {
         VStack(spacing: 8) {
-            HStack(spacing: 12) {
-                // Nút Bắt đầu / Kết thúc hành trình
+            // Hàng phím to bấm nhanh bằng ngón cái khi đang lái xe
+            HStack(spacing: 10) {
+                // Phím Kích Hoạt Xi Nhan Trái Khẩn Cấp
                 Button(action: {
-                    if navigation.isNavigating {
-                        navigation.stopNavigation()
-                    } else {
-                        showingRoutePlanner = true
-                    }
+                    controller.triggerManual(state: .left)
                 }) {
-                    HStack(spacing: 8) {
-                        Image(systemName: navigation.isNavigating ? "stop.fill" : "play.fill")
-                        Text(navigation.isNavigating ? "KẾT THÚC" : "CHỌN LỘ TRÌNH")
-                            .font(.system(size: 15, weight: .heavy))
+                    HStack(spacing: 6) {
+                        Image(systemName: "arrowtriangle.backward.fill")
+                            .font(.title3.bold())
+                        Text("RẼ TRÁI")
+                            .font(.system(size: 16, weight: .heavy))
                     }
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 14)
-                    .background(navigation.isNavigating ? Color.red : Color.blue)
+                    .background(controller.currentState == .left ? Color.green : Color.blue)
                     .foregroundColor(.white)
                     .cornerRadius(14)
                 }
                 
-                // Nút Chế độ Tự Động (ON / OFF)
-                Button(action: {
-                    settings.isAutoSignalEnabled.toggle()
-                }) {
-                    VStack(spacing: 2) {
-                        Image(systemName: settings.isAutoSignalEnabled ? "bolt.badge.automatic.fill" : "bolt.slash.fill")
-                            .font(.system(size: 18))
-                        Text(settings.isAutoSignalEnabled ? "TỰ ĐỘNG: BẬT" : "TỰ ĐỘNG: TẮT")
-                            .font(.system(size: 10, weight: .bold))
+                // Phím Tắt Khẩn Cấp
+                if controller.currentState != .off {
+                    Button(action: {
+                        controller.turnOff()
+                    }) {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.system(size: 24))
+                            .frame(width: 50, height: 50)
+                            .background(Color.red)
+                            .foregroundColor(.white)
+                            .cornerRadius(14)
                     }
-                    .frame(width: 95)
-                    .padding(.vertical, 10)
-                    .background(settings.isAutoSignalEnabled ? Color.green.opacity(0.25) : Color.gray.opacity(0.25))
-                    .foregroundColor(settings.isAutoSignalEnabled ? .green : .white)
+                }
+                
+                // Phím Kích Hoạt Xi Nhan Phải Khẩn Cấp
+                Button(action: {
+                    controller.triggerManual(state: .right)
+                }) {
+                    HStack(spacing: 6) {
+                        Text("RẼ PHẢI")
+                            .font(.system(size: 16, weight: .heavy))
+                        Image(systemName: "arrowtriangle.forward.fill")
+                            .font(.title3.bold())
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 14)
+                    .background(controller.currentState == .right ? Color.green : Color.blue)
+                    .foregroundColor(.white)
                     .cornerRadius(14)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 14)
-                            .stroke(settings.isAutoSignalEnabled ? Color.green : Color.gray, lineWidth: 1.5)
-                    )
                 }
             }
             
             // Thanh công cụ phụ: Bản đồ Offline, Kiểm tra phần cứng, Cài đặt
-            HStack(spacing: 12) {
+            HStack(spacing: 10) {
                 toolButton(title: "Bản đồ Offline", icon: "map.fill") { showingOfflineMaps = true }
                 toolButton(title: "Test ESP32", icon: "cpu") { showingHardwareTest = true }
                 toolButton(title: "Cài đặt", icon: "gearshape.fill") { showingSettings = true }
             }
         }
         .padding(10)
-        .background(Color.black.opacity(0.8))
+        .background(Color.black.opacity(0.85))
         .cornerRadius(18)
     }
     
@@ -232,14 +243,6 @@ public struct MainDashboardView: View {
             .background(Color.white.opacity(0.12))
             .foregroundColor(.white)
             .cornerRadius(10)
-        }
-    }
-    
-    private func formatDistance(_ meters: Double) -> String {
-        if meters >= 1000 {
-            return String(format: "%.1f km", meters / 1000.0)
-        } else {
-            return "\(Int(meters)) m"
         }
     }
 }

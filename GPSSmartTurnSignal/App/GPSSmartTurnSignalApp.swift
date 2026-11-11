@@ -15,7 +15,9 @@ struct GPSSmartTurnSignalApp: App {
                 .preferredColorScheme(.dark) // Giao diện tối ưu tương phản cao khi lái xe
                 .onAppear {
                     location.requestPermissions()
+                    location.startTracking()
                     hardware.configureActiveMode()
+                    navigation.startFreeRideProtection()
                 }
         }
     }

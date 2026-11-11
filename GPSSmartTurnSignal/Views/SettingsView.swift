@@ -120,14 +120,14 @@ public struct SettingsView: View {
                     // Độ nhạy góc rẽ
                     VStack(alignment: .leading, spacing: 4) {
                         HStack {
-                            Text("Độ nhạy góc rẽ tối thiểu")
+                            Text("Độ nhạy góc bẻ lái vào cua")
                             Spacer()
                             Text("\(Int(settings.turnSensitivityDegrees))°")
                                 .bold()
                                 .foregroundColor(.blue)
                         }
-                        Slider(value: $settings.turnSensitivityDegrees, in: 30...75, step: 5)
-                        Text("Lọc bỏ các khúc cua thoải, chỉ nhận diện ngã rẽ thật.")
+                        Slider(value: $settings.turnSensitivityDegrees, in: 10...50, step: 2)
+                        Text("Mặc định 20°. Nhận diện ngay khi đầu xe bắt đầu bẻ lái vào cua.")
                             .font(.caption2)
                             .foregroundColor(.secondary)
                     }
@@ -141,8 +141,8 @@ public struct SettingsView: View {
                                 .bold()
                                 .foregroundColor(.blue)
                         }
-                        Slider(value: $settings.minSpeedKmh, in: 5...30, step: 1)
-                        Text("Tránh báo sai khi đứng chờ đèn đỏ hoặc điều chỉnh máy.")
+                        Slider(value: $settings.minSpeedKmh, in: 3...25, step: 1)
+                        Text("Mặc định 6 km/h. Nhận diện ngay khi xe lăn bánh chậm vào ngã rẽ.")
                             .font(.caption2)
                             .foregroundColor(.secondary)
                     }

@@ -2,6 +2,7 @@ import Foundation
 import Combine
 import AudioToolbox
 import UIKit
+import AVFoundation
 
 /// Bộ điều phối trạng thái đèn xi nhan, chống dội lệnh và quản lý bộ đếm thời gian
 public final class TurnSignalController: ObservableObject {
@@ -17,6 +18,7 @@ public final class TurnSignalController: ObservableObject {
     private var blinkTimer: Timer?
     private let hardwareService = HardwareService.shared
     private let settings = AppSettings.shared
+    private let speechSynthesizer = AVSpeechSynthesizer()
     
     private init() {}
     
@@ -69,6 +71,8 @@ public final class TurnSignalController: ObservableObject {
         // Gửi lệnh TURN_OFF tới ESP32
         hardwareService.sendCommand(.turnOff)
         
+        speakVoice("Xi nhan đã tắt")
+        
         if settings.isHapticFeedbackEnabled {
             let feedback = UINotificationFeedbackGenerator()
             feedback.notificationOccurred(.success)
@@ -100,8 +104,8 @@ public final class TurnSignalController: ObservableObject {
         let cmd: TurnCommand = (target == .left) ? .turnLeft : .turnRight
         hardwareService.sendCommand(cmd)
         
-        // Phát âm thanh cảnh báo & rung
-        playAlertFeedback()
+        // Phát âm thanh cảnh báo & giọng nói & rung
+        playAlertFeedback(for: target)
         
         // Bắt đầu đếm ngược tự tắt trên điện thoại
         startCountdownTimer(duration: duration)
@@ -121,15 +125,27 @@ public final class TurnSignalController: ObservableObject {
         }
     }
     
-    private func playAlertFeedback() {
+    private func playAlertFeedback(for state: TurnSignalState) {
         if settings.isSoundAlertEnabled {
-            // Phát âm thanh hệ thống báo hiệu rẽ
             AudioServicesPlaySystemSound(1057) // Chuông ngắn cảnh báo
+            let text = (state == .left) ? "Đã bật xi nhan trái" : "Đã bật xi nhan phải"
+            speakVoice(text)
         }
         
         if settings.isHapticFeedbackEnabled {
             let impact = UIImpactFeedbackGenerator(style: .heavy)
             impact.impactOccurred()
+        }
+    }
+    
+    private func speakVoice(_ text: String) {
+        guard settings.isSoundAlertEnabled else { return }
+        DispatchQueue.main.async { [weak self] in
+            let utterance = AVSpeechUtterance(string: text)
+            utterance.voice = AVSpeechSynthesisVoice(language: "vi-VN")
+            utterance.rate = 0.52
+            utterance.volume = 1.0
+            self?.speechSynthesizer.speak(utterance)
         }
     }
 }
