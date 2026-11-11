@@ -1,0 +1,78 @@
+name: Build iOS IPA (TrollStore Ready)
+
+on:
+  push:
+    branches: [ main, master ]
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build-ipa:
+    runs-on: macos-14
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Select Xcode Version
+        run: |
+          if [ -d "/Applications/Xcode_15.4.app" ]; then
+            sudo xcode-select -s /Applications/Xcode_15.4.app/Contents/Developer
+          fi
+          xcodebuild -version
+
+      - name: Build Application (.app)
+        run: |
+          set +e
+          xcodebuild -project GPS-Smart-Turn-Signal.xcodeproj \
+                     -scheme GPSSmartTurnSignal \
+                     -configuration Release \
+                     -destination 'generic/platform=iOS' \
+                     -sdk iphoneos \
+                     -derivedDataPath build/DerivedData \
+                     CODE_SIGNING_ALLOWED=NO \
+                     CODE_SIGNING_REQUIRED=NO \
+                     CODE_SIGN_IDENTITY="" \
+                     PROVISIONING_PROFILE_SPECIFIER="" \
+                     DEVELOPMENT_TEAM="" \
+                     VALIDATE_PRODUCT=NO \
+                     clean build > xcodebuild.log 2>&1
+          STATUS=$?
+          if [ $STATUS -ne 0 ]; then
+            echo "::error::xcodebuild failed with exit code $STATUS"
+            echo "========== XCODEBUILD FULL LOG (LAST 200 LINES) =========="
+            tail -n 200 xcodebuild.log
+            echo "==========================================================="
+            exit $STATUS
+          fi
+          echo "Build succeeded!"
+
+      - name: Package into IPA for TrollStore
+        run: |
+          mkdir -p Payload
+          APP_PATH=$(find build/DerivedData -name "GPSSmartTurnSignal.app" -type d | head -n 1)
+          if [ -z "$APP_PATH" ]; then
+            echo "Error: GPSSmartTurnSignal.app not found!"
+            exit 1
+          fi
+          echo "Found app at: $APP_PATH"
+          cp -r "$APP_PATH" Payload/
+          zip -qr GPSSmartTurnSignal.ipa Payload
+          echo "IPA package created successfully!"
+          ls -lh GPSSmartTurnSignal.ipa
+
+      - name: Upload IPA Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: GPSSmartTurnSignal-TrollStore-IPA
+          path: GPSSmartTurnSignal.ipa
+          retention-days: 14
+
+      - name: Create GitHub Release (Only for Tags)
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: GPSSmartTurnSignal.ipa
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

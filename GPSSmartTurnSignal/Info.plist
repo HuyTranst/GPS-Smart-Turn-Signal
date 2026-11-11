@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleDevelopmentRegion</key>
+    <string>$(DEVELOPMENT_LANGUAGE)</string>
+    <key>CFBundleExecutable</key>
+    <string>$(EXECUTABLE_NAME)</string>
+    <key>CFBundleIdentifier</key>
+    <string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+    <key>CFBundleInfoDictionaryVersion</key>
+    <string>6.0</string>
+    <key>CFBundleName</key>
+    <string>$(PRODUCT_NAME)</string>
+    <key>CFBundlePackageType</key>
+    <string>APPL</string>
+    <key>CFBundleShortVersionString</key>
+    <string>1.0</string>
+    <key>CFBundleVersion</key>
+    <string>1</string>
+    <key>LSRequiresIPhoneOS</key>
+    <true/>
+    
+    <!-- CÁC QUYỀN TRUY CẬP ĐỊNH VỊ VÀ PHẦN CỨNG -->
+    <key>NSLocationWhenInUseUsageDescription</key>
+    <string>Ứng dụng cần định vị GPS để nhận diện hướng di chuyển và tự động kích hoạt xi nhan trước các khúc rẽ.</string>
+    <key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+    <string>Ứng dụng cần định vị GPS liên tục kể cả khi màn hình tắt hoặc chạy ngầm để điều khiển xi nhan an toàn khi lái xe.</string>
+    <key>NSBluetoothAlwaysUsageDescription</key>
+    <string>Ứng dụng cần Bluetooth Low Energy để kết nối và gửi lệnh điều khiển relay xi nhan tới ESP32.</string>
+    <key>NSBluetoothPeripheralUsageDescription</key>
+    <string>Ứng dụng cần kết nối Bluetooth với module ESP32 trên phương tiện.</string>
+    <key>NSLocalNetworkUsageDescription</key>
+    <string>Ứng dụng cần kết nối Wi-Fi nội bộ để gửi lệnh HTTP điều khiển relay tới module ESP32.</string>
+
+    <!-- CÁC CHẾ ĐỘ CHẠY NGẦM (BACKGROUND MODES) -->
+    <key>UIBackgroundModes</key>
+    <array>
+        <string>location</string>
+        <string>bluetooth-central</string>
+        <string>fetch</string>
+        <string>processing</string>
+    </array>
+
+    <!-- CẤU HÌNH CHO PHÉP KẾT NỐI HTTP MẠNG NỘI BỘ (ESP32 AP / LAN) -->
+    <key>NSAppTransportSecurity</key>
+    <dict>
+        <key>NSAllowsLocalNetworking</key>
+        <true/>
+        <key>NSAllowsArbitraryLoads</key>
+        <true/>
+    </dict>
+
+    <key>UIApplicationSceneManifest</key>
+    <dict>
+        <key>UIApplicationSupportsMultipleScenes</key>
+        <false/>
+    </dict>
+    <key>UIRequiredDeviceCapabilities</key>
+    <array>
+        <string>arm64</string>
+    </array>
+    <key>UISupportedInterfaceOrientations</key>
+    <array>
+        <string>UIInterfaceOrientationPortrait</string>
+        <string>UIInterfaceOrientationLandscapeLeft</string>
+        <string>UIInterfaceOrientationLandscapeRight</string>
+    </array>
+</dict>
+</plist>

@@ -1,0 +1,24 @@
+# Xcode & Apple
+xcuserdata/
+*.xcworkspace/xcuserdata/
+*.xcodeproj/xcuserdata/
+*.xcuserstate
+DerivedData/
+build/
+*.hmap
+*.xccheckout
+*.moved-aside
+*.ipa
+Payload/
+
+# OS Artifacts
+.DS_Store
+Thumbs.db
+
+# PlatformIO & Arduino
+.pio/
+.pioenvs/
+.piolibdeps/
+*.bin
+*.elf
+*.hex

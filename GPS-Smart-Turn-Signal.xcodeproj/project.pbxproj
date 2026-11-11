@@ -1,0 +1,338 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 56;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		DC85E1AFCFD4A7B762ED8A6B /* GPSSmartTurnSignalApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0729B996534B9C7E62F8872E /* GPSSmartTurnSignalApp.swift */; };
+		6A7D9F23DC3D5162BF2B550E /* TurnCommand.swift in Sources */ = {isa = PBXBuildFile; fileRef = A3CB34E3CBBC764013647397 /* TurnCommand.swift */; };
+		07F4991D371F4C063D4AEC39 /* AppSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 504DD9DB1181B322B64553E9 /* AppSettings.swift */; };
+		81A131ADC9621F6EB8276D29 /* NavigationRoute.swift in Sources */ = {isa = PBXBuildFile; fileRef = D469F63BA57EC2A810FA2F8C /* NavigationRoute.swift */; };
+		7F1AB6EF0CBBEE5A33BB57A9 /* OfflineMapRegion.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4E6282023E42F77FC0A0FBA /* OfflineMapRegion.swift */; };
+		3AA1BE6C60B86902AC5595D3 /* LocationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 256227805971CD9FDF01E7D3 /* LocationManager.swift */; };
+		37DB4584EC64CCF4FC982FFC /* BLEManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 030E219BA95F3767E00134B7 /* BLEManager.swift */; };
+		9867917CB779291045DF6070 /* WiFiManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE990FFF0DB7246E62E35200 /* WiFiManager.swift */; };
+		F7361A79F6A388C8B0FBE464 /* HardwareService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 15B5036B5C41624A90D00F7B /* HardwareService.swift */; };
+		942C11FCA369B056DA728784 /* TurnSignalController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0B94F8D01C635D150B7D620C /* TurnSignalController.swift */; };
+		6C3C7DA92A5C5A0B602969F8 /* NavigationEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42DF446D0C8F55220F432077 /* NavigationEngine.swift */; };
+		869DEAC3889FDC7973F22CB8 /* OfflineMapTileManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0B38B2F782D42CF24C615E0 /* OfflineMapTileManager.swift */; };
+		A9DF6D6086DCB3B237CA0C05 /* TileOverlayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 52C9FBADD63C9C5234B4672E /* TileOverlayView.swift */; };
+		41838E75A282FC17EB2CC0AC /* TurnIndicatorWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFBDF6BC9D76D9FC2FA353E2 /* TurnIndicatorWidget.swift */; };
+		2B5F5324EDB06D719C9EF773 /* HardwareTestView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD1936B43097B4654C5A8759 /* HardwareTestView.swift */; };
+		2A805CEA0B0C93A9E9297962 /* OfflineMapManagerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E8F3C424BEBBC21CF0510067 /* OfflineMapManagerView.swift */; };
+		0366047E1EAD5CC5EA2D8838 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B6C00F877111216236EB6BB /* SettingsView.swift */; };
+		8EFED843B987045526FD1A62 /* RoutePlannerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E28ADEF50E751AE2C6AAA05 /* RoutePlannerView.swift */; };
+		410D37F8E0F64DD87391EF6E /* MainDashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EFA9D4A523E07F6B741EDD72 /* MainDashboardView.swift */; };
+		04A7814E4EEC70DE7D6C41B1 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 8D562B3E40B6C9EC53F38F07 /* Assets.xcassets */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		0729B996534B9C7E62F8872E /* GPSSmartTurnSignalApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "App/GPSSmartTurnSignalApp.swift"; sourceTree = "<group>"; };
+		A3CB34E3CBBC764013647397 /* TurnCommand.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Models/TurnCommand.swift"; sourceTree = "<group>"; };
+		504DD9DB1181B322B64553E9 /* AppSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Models/AppSettings.swift"; sourceTree = "<group>"; };
+		D469F63BA57EC2A810FA2F8C /* NavigationRoute.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Models/NavigationRoute.swift"; sourceTree = "<group>"; };
+		F4E6282023E42F77FC0A0FBA /* OfflineMapRegion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Models/OfflineMapRegion.swift"; sourceTree = "<group>"; };
+		256227805971CD9FDF01E7D3 /* LocationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "CoreLocation/LocationManager.swift"; sourceTree = "<group>"; };
+		030E219BA95F3767E00134B7 /* BLEManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Hardware/BLEManager.swift"; sourceTree = "<group>"; };
+		AE990FFF0DB7246E62E35200 /* WiFiManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Hardware/WiFiManager.swift"; sourceTree = "<group>"; };
+		15B5036B5C41624A90D00F7B /* HardwareService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Hardware/HardwareService.swift"; sourceTree = "<group>"; };
+		0B94F8D01C635D150B7D620C /* TurnSignalController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Navigation/TurnSignalController.swift"; sourceTree = "<group>"; };
+		42DF446D0C8F55220F432077 /* NavigationEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Navigation/NavigationEngine.swift"; sourceTree = "<group>"; };
+		A0B38B2F782D42CF24C615E0 /* OfflineMapTileManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "OfflineMap/OfflineMapTileManager.swift"; sourceTree = "<group>"; };
+		52C9FBADD63C9C5234B4672E /* TileOverlayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "OfflineMap/TileOverlayView.swift"; sourceTree = "<group>"; };
+		FFBDF6BC9D76D9FC2FA353E2 /* TurnIndicatorWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Views/TurnIndicatorWidget.swift"; sourceTree = "<group>"; };
+		BD1936B43097B4654C5A8759 /* HardwareTestView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Views/HardwareTestView.swift"; sourceTree = "<group>"; };
+		E8F3C424BEBBC21CF0510067 /* OfflineMapManagerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Views/OfflineMapManagerView.swift"; sourceTree = "<group>"; };
+		9B6C00F877111216236EB6BB /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Views/SettingsView.swift"; sourceTree = "<group>"; };
+		6E28ADEF50E751AE2C6AAA05 /* RoutePlannerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Views/RoutePlannerView.swift"; sourceTree = "<group>"; };
+		EFA9D4A523E07F6B741EDD72 /* MainDashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Views/MainDashboardView.swift"; sourceTree = "<group>"; };
+		8D562B3E40B6C9EC53F38F07 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		BCB51839EEA339E71371A29B /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		99006388588CE7D539A04F10 /* GPSSmartTurnSignal.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = GPSSmartTurnSignal.app; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		29B2D46AA747A59804D46E1F /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		5928955287B8089ED2177128 = {
+			isa = PBXGroup;
+			children = (
+				095FEE2E633C50D24407F2D6 /* GPSSmartTurnSignal */,
+				BF7A2D27A78D590BDEF15AF2 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		095FEE2E633C50D24407F2D6 /* GPSSmartTurnSignal */ = {
+			isa = PBXGroup;
+			children = (
+				0729B996534B9C7E62F8872E /* GPSSmartTurnSignalApp.swift */,
+				A3CB34E3CBBC764013647397 /* TurnCommand.swift */,
+				504DD9DB1181B322B64553E9 /* AppSettings.swift */,
+				D469F63BA57EC2A810FA2F8C /* NavigationRoute.swift */,
+				F4E6282023E42F77FC0A0FBA /* OfflineMapRegion.swift */,
+				256227805971CD9FDF01E7D3 /* LocationManager.swift */,
+				030E219BA95F3767E00134B7 /* BLEManager.swift */,
+				AE990FFF0DB7246E62E35200 /* WiFiManager.swift */,
+				15B5036B5C41624A90D00F7B /* HardwareService.swift */,
+				0B94F8D01C635D150B7D620C /* TurnSignalController.swift */,
+				42DF446D0C8F55220F432077 /* NavigationEngine.swift */,
+				A0B38B2F782D42CF24C615E0 /* OfflineMapTileManager.swift */,
+				52C9FBADD63C9C5234B4672E /* TileOverlayView.swift */,
+				FFBDF6BC9D76D9FC2FA353E2 /* TurnIndicatorWidget.swift */,
+				BD1936B43097B4654C5A8759 /* HardwareTestView.swift */,
+				E8F3C424BEBBC21CF0510067 /* OfflineMapManagerView.swift */,
+				9B6C00F877111216236EB6BB /* SettingsView.swift */,
+				6E28ADEF50E751AE2C6AAA05 /* RoutePlannerView.swift */,
+				EFA9D4A523E07F6B741EDD72 /* MainDashboardView.swift */,
+				8D562B3E40B6C9EC53F38F07 /* Assets.xcassets */,
+				BCB51839EEA339E71371A29B /* Info.plist */,
+			);
+			path = GPSSmartTurnSignal;
+			sourceTree = "<group>";
+		};
+		BF7A2D27A78D590BDEF15AF2 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				99006388588CE7D539A04F10 /* GPSSmartTurnSignal.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		6772EC0E5D0CA05E04DDDB49 /* GPSSmartTurnSignal */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = DDC96F7C1D62EA89141E06E0 /* Build configuration list for PBXNativeTarget "GPSSmartTurnSignal" */;
+			buildPhases = (
+				E7209FB05162B7572F88D05E /* Sources */,
+				29B2D46AA747A59804D46E1F /* Frameworks */,
+				66F8606E9F0A136E2228EBCB /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = GPSSmartTurnSignal;
+			productName = GPSSmartTurnSignal;
+			productReference = 99006388588CE7D539A04F10 /* GPSSmartTurnSignal.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		33EF45D2918B2C5BBEF21D74 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 1500;
+				LastUpgradeCheck = 1500;
+				TargetAttributes = {
+					6772EC0E5D0CA05E04DDDB49 = {
+						CreatedOnToolsVersion = 15.0;
+					};
+				};
+			};
+			buildConfigurationList = 4623F89214148A3820E2F59A /* Build configuration list for PBXProject "GPSSmartTurnSignal" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = 5928955287B8089ED2177128;
+			productRefGroup = BF7A2D27A78D590BDEF15AF2 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				6772EC0E5D0CA05E04DDDB49 /* GPSSmartTurnSignal */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		66F8606E9F0A136E2228EBCB /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				04A7814E4EEC70DE7D6C41B1 /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		E7209FB05162B7572F88D05E /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				DC85E1AFCFD4A7B762ED8A6B /* GPSSmartTurnSignalApp.swift in Sources */,
+				6A7D9F23DC3D5162BF2B550E /* TurnCommand.swift in Sources */,
+				07F4991D371F4C063D4AEC39 /* AppSettings.swift in Sources */,
+				81A131ADC9621F6EB8276D29 /* NavigationRoute.swift in Sources */,
+				7F1AB6EF0CBBEE5A33BB57A9 /* OfflineMapRegion.swift in Sources */,
+				3AA1BE6C60B86902AC5595D3 /* LocationManager.swift in Sources */,
+				37DB4584EC64CCF4FC982FFC /* BLEManager.swift in Sources */,
+				9867917CB779291045DF6070 /* WiFiManager.swift in Sources */,
+				F7361A79F6A388C8B0FBE464 /* HardwareService.swift in Sources */,
+				942C11FCA369B056DA728784 /* TurnSignalController.swift in Sources */,
+				6C3C7DA92A5C5A0B602969F8 /* NavigationEngine.swift in Sources */,
+				869DEAC3889FDC7973F22CB8 /* OfflineMapTileManager.swift in Sources */,
+				A9DF6D6086DCB3B237CA0C05 /* TileOverlayView.swift in Sources */,
+				41838E75A282FC17EB2CC0AC /* TurnIndicatorWidget.swift in Sources */,
+				2B5F5324EDB06D719C9EF773 /* HardwareTestView.swift in Sources */,
+				2A805CEA0B0C93A9E9297962 /* OfflineMapManagerView.swift in Sources */,
+				0366047E1EAD5CC5EA2D8838 /* SettingsView.swift in Sources */,
+				8EFED843B987045526FD1A62 /* RoutePlannerView.swift in Sources */,
+				410D37F8E0F64DD87391EF6E /* MainDashboardView.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		C33178FB9E2FFA68E15EBD85 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		540546482BF13AAB117506A6 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_OPTIMIZATION_LEVEL = s;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				VALIDATE_PRODUCT = NO;
+			};
+			name = Release;
+		};
+		741E3BA2F2A0A16A4D6F67A5 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Manual;
+				CODE_SIGN_IDENTITY = "";
+				CODE_SIGNING_REQUIRED = NO;
+				CODE_SIGNING_ALLOWED = NO;
+				DEVELOPMENT_TEAM = "";
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = GPSSmartTurnSignal/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.gps.smartturnsignal;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		4C32C86745A604C23F9CAB4F /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Manual;
+				CODE_SIGN_IDENTITY = "";
+				CODE_SIGNING_REQUIRED = NO;
+				CODE_SIGNING_ALLOWED = NO;
+				DEVELOPMENT_TEAM = "";
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = GPSSmartTurnSignal/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.gps.smartturnsignal;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		4623F89214148A3820E2F59A /* Build configuration list for PBXProject "GPSSmartTurnSignal" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				C33178FB9E2FFA68E15EBD85 /* Debug */,
+				540546482BF13AAB117506A6 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		DDC96F7C1D62EA89141E06E0 /* Build configuration list for PBXNativeTarget "GPSSmartTurnSignal" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				741E3BA2F2A0A16A4D6F67A5 /* Debug */,
+				4C32C86745A604C23F9CAB4F /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+
+	};
+	rootObject = 33EF45D2918B2C5BBEF21D74 /* Project object */;
+}
