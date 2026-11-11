@@ -1,10 +1,12 @@
 import Foundation
 
-/// Lệnh điều khiển xi nhan gửi tới ESP32
+/// Lệnh điều khiển xi nhan và đèn báo gửi tới ESP32
 public enum TurnCommand: String, Codable {
     case turnLeft = "TURN_LEFT"
     case turnRight = "TURN_RIGHT"
     case turnOff = "TURN_OFF"
+    case cameraWarningOn = "CAMERA_ON"
+    case cameraWarningOff = "CAMERA_OFF"
     
     /// Chuỗi payload văn bản gửi qua BLE / HTTP
     public var payloadString: String {

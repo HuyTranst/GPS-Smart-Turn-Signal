@@ -1,51 +1,89 @@
 import SwiftUI
 
-/// Màn hình điều khiển chính (Dashboard) tự động bảo vệ tài xế khi qua ngã rẽ
+/// Màn hình điều khiển chính (Dashboard) tự động bảo vệ tài xế khi qua ngã rẽ và cảnh báo Camera giao thông 500m
 public struct MainDashboardView: View {
     @ObservedObject var locationManager = LocationManager.shared
     @ObservedObject var navigation = NavigationEngine.shared
     @ObservedObject var hardware = HardwareService.shared
     @ObservedObject var controller = TurnSignalController.shared
     @ObservedObject var settings = AppSettings.shared
+    @ObservedObject var cameraManager = TrafficCameraManager.shared
     
     // Quản lý các sheet điều hướng
     @State private var showingSettings = false
     @State private var showingHardwareTest = false
     @State private var showingOfflineMaps = false
     @State private var showingRoutePlanner = false
+    @State private var showingCameraList = false
     
     public init() {}
     
     public var body: some View {
         ZStack {
-            // 1. Bản đồ OpenStreetMap Offline toàn màn hình - Tự động định vị và xoay theo đầu xe
+            // 1. Bản đồ OpenStreetMap toàn màn hình - Hiển thị xe và các Marker Camera
             OfflineMapView()
                 .edgesIgnoringSafeArea(.all)
             
             // 2. Lớp giao diện HUD điều khiển nổi
-            VStack(spacing: 12) {
+            VStack(spacing: 10) {
                 // Header phía trên: Đồng hồ tốc độ lớn, GPS và Trạng thái ESP32
                 topStatusBar
                 
-                // Banner Cảnh Báo Trạng Thái Ngã Rẽ Thời Gian Thực
+                // Banner Cảnh Báo Camera Giao Thông hoặc Ngã Rẽ Thời Gian Thực
                 statusAlertBanner
+                
+                // Toast thông báo hành động (nếu có)
+                if let msg = cameraManager.lastActionMessage {
+                    Text(msg)
+                        .font(.system(size: 13, weight: .bold))
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 8)
+                        .background(Color.black.opacity(0.85))
+                        .cornerRadius(20)
+                        .overlay(RoundedRectangle(cornerRadius: 20).stroke(Color.yellow.opacity(0.8), lineWidth: 1.5))
+                        .transition(.move(edge: .top).combined(with: .opacity))
+                }
                 
                 Spacer()
                 
-                // Nút bấm định vị lại tâm xe và kích hoạt lại auto zoom
+                // Cột nút nổi bên phải: Ghim Camera và Định vị lại tâm xe
                 HStack {
                     Spacer()
-                    Button(action: {
-                        NotificationCenter.default.post(name: NSNotification.Name("RecenterMapOnUser"), object: nil)
-                    }) {
-                        Image(systemName: "location.fill")
-                            .font(.system(size: 16, weight: .bold))
+                    VStack(spacing: 12) {
+                        // NÚT ĐỊNH VỊ & GHI NHỚ CAMERA GIAO THÔNG (1 chạm tức thì)
+                        Button(action: {
+                            cameraManager.saveCameraAtCurrentLocation()
+                        }) {
+                            VStack(spacing: 3) {
+                                Image(systemName: "camera.badge.plus")
+                                    .font(.system(size: 18, weight: .bold))
+                                Text("Ghim Cam")
+                                    .font(.system(size: 9, weight: .black))
+                            }
                             .foregroundColor(.white)
-                            .frame(width: 42, height: 42)
-                            .background(Color.black.opacity(0.8))
+                            .frame(width: 52, height: 52)
+                            .background(
+                                LinearGradient(colors: [Color.orange, Color.red], startPoint: .topLeading, endPoint: .bottomTrailing)
+                            )
                             .clipShape(Circle())
-                            .overlay(Circle().stroke(Color.white.opacity(0.25), lineWidth: 1))
-                            .shadow(radius: 4)
+                            .overlay(Circle().stroke(Color.white, lineWidth: 2))
+                            .shadow(color: .orange.opacity(0.6), radius: 6, x: 0, y: 3)
+                        }
+                        
+                        // Nút Recenter đưa camera về tâm xe
+                        Button(action: {
+                            NotificationCenter.default.post(name: NSNotification.Name("RecenterMapOnUser"), object: nil)
+                        }) {
+                            Image(systemName: "location.fill")
+                                .font(.system(size: 16, weight: .bold))
+                                .foregroundColor(.white)
+                                .frame(width: 44, height: 44)
+                                .background(Color.black.opacity(0.85))
+                                .clipShape(Circle())
+                                .overlay(Circle().stroke(Color.white.opacity(0.3), lineWidth: 1))
+                                .shadow(radius: 4)
+                        }
                     }
                 }
                 .padding(.trailing, 4)
@@ -53,7 +91,7 @@ public struct MainDashboardView: View {
                 // Đèn xi nhan nhấp nháy mô phỏng taplo xe
                 TurnIndicatorWidget()
                     .padding(.horizontal)
-                    .padding(.bottom, 4)
+                    .padding(.bottom, 2)
                 
                 // Cụm phím điều khiển chạm nhanh & khẩn cấp khi thấy chốt CSGT
                 bottomEmergencyControlBar
@@ -66,8 +104,8 @@ public struct MainDashboardView: View {
         .sheet(isPresented: $showingHardwareTest) { HardwareTestView() }
         .sheet(isPresented: $showingOfflineMaps) { OfflineMapManagerView() }
         .sheet(isPresented: $showingRoutePlanner) { RoutePlannerView() }
+        .sheet(isPresented: $showingCameraList) { TrafficCameraListView() }
         .onAppear {
-            // TỰ ĐỘNG KHỞI CHẠY TOÀN BỘ NGAY KHI MỞ APP (KHÔNG CẦN BẤM NÚT NÀO)
             locationManager.requestPermissions()
             locationManager.startTracking()
             hardware.configureActiveMode()
@@ -91,7 +129,7 @@ public struct MainDashboardView: View {
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 6)
-            .background(Color.black.opacity(0.8))
+            .background(Color.black.opacity(0.85))
             .cornerRadius(12)
             
             Spacer()
@@ -110,7 +148,7 @@ public struct MainDashboardView: View {
                 }
                 .padding(.horizontal, 10)
                 .padding(.vertical, 8)
-                .background(Color.black.opacity(0.8))
+                .background(Color.black.opacity(0.85))
                 .cornerRadius(12)
             }
             
@@ -125,15 +163,46 @@ public struct MainDashboardView: View {
             }
             .padding(.horizontal, 10)
             .padding(.vertical, 8)
-            .background(Color.black.opacity(0.8))
+            .background(Color.black.opacity(0.85))
             .cornerRadius(12)
         }
     }
     
-    /// Banner trạng thái giám sát ngã rẽ thông minh
+    /// Banner trạng thái giám sát ngã rẽ và CẢNH BÁO CAMERA GIAO THÔNG 500M
     private var statusAlertBanner: some View {
         VStack(spacing: 4) {
-            if controller.currentState == .left {
+            // 1. ƯU TIÊN SỐ 1: CẢNH BÁO CAMERA GIAO THÔNG KHI CÁCH <= 500M
+            if cameraManager.isCameraWarningActive, let cam = cameraManager.activeWarningCamera {
+                HStack(spacing: 10) {
+                    Image(systemName: "camera.badge.ellipsis")
+                        .font(.system(size: 22, weight: .black))
+                        .foregroundColor(.yellow)
+                    
+                    VStack(alignment: .leading, spacing: 2) {
+                        HStack {
+                            Text("CẢNH BÁO CAMERA GIAO THÔNG!")
+                                .font(.system(size: 13, weight: .black))
+                            Spacer()
+                            Text("\(cameraManager.warningDistanceMeters)m")
+                                .font(.system(size: 14, weight: .heavy, design: .rounded))
+                                .foregroundColor(.yellow)
+                        }
+                        
+                        Text("ĐÃ GỬI LỆNH MỞ ĐÈN SỐ 3 TRÊN ESP32")
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundColor(.white.opacity(0.9))
+                    }
+                }
+                .foregroundColor(.white)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 10)
+                .padding(.horizontal, 14)
+                .background(Color.red)
+                .cornerRadius(14)
+                .shadow(color: .red.opacity(0.7), radius: 10)
+            }
+            // 2. CẢNH BÁO ĐANG RẼ TRÁI
+            else if controller.currentState == .left {
                 HStack(spacing: 8) {
                     Image(systemName: "arrowtriangle.backward.fill")
                         .font(.title2.bold())
@@ -148,7 +217,9 @@ public struct MainDashboardView: View {
                 .background(Color.green)
                 .cornerRadius(12)
                 .shadow(color: .green.opacity(0.5), radius: 8)
-            } else if controller.currentState == .right {
+            }
+            // 3. CẢNH BÁO ĐANG RẼ PHẢI
+            else if controller.currentState == .right {
                 HStack(spacing: 8) {
                     Image(systemName: "arrowtriangle.forward.fill")
                         .font(.title2.bold())
@@ -163,7 +234,9 @@ public struct MainDashboardView: View {
                 .background(Color.green)
                 .cornerRadius(12)
                 .shadow(color: .green.opacity(0.5), radius: 8)
-            } else {
+            }
+            // 4. TRẠNG THÁI BÌNH THƯỜNG
+            else {
                 HStack(spacing: 8) {
                     Circle()
                         .fill(Color.green)
@@ -176,7 +249,7 @@ public struct MainDashboardView: View {
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 8)
                 .padding(.horizontal, 12)
-                .background(Color.black.opacity(0.8))
+                .background(Color.black.opacity(0.85))
                 .cornerRadius(12)
             }
         }
@@ -204,10 +277,14 @@ public struct MainDashboardView: View {
                     .cornerRadius(14)
                 }
                 
-                // Phím Tắt Khẩn Cấp
-                if controller.currentState != .off {
+                // Phím Tắt Khẩn Cấp Toàn Bộ Relay
+                if controller.currentState != .off || cameraManager.isCameraWarningActive {
                     Button(action: {
                         controller.turnOff()
+                        if cameraManager.isCameraWarningActive {
+                            hardware.sendCommand(.cameraWarningOff)
+                            cameraManager.isCameraWarningActive = false
+                        }
                     }) {
                         Image(systemName: "xmark.circle.fill")
                             .font(.system(size: 24))
@@ -236,8 +313,9 @@ public struct MainDashboardView: View {
                 }
             }
             
-            // Thanh công cụ phụ: Bản đồ Offline, Kiểm tra phần cứng, Cài đặt
-            HStack(spacing: 10) {
+            // Thanh công cụ phụ: Bản đồ Offline, Camera giao thông, Kiểm tra ESP32, Cài đặt
+            HStack(spacing: 8) {
+                toolButton(title: "Camera", icon: "camera.fill") { showingCameraList = true }
                 toolButton(title: "Bản đồ Offline", icon: "map.fill") { showingOfflineMaps = true }
                 toolButton(title: "Test ESP32", icon: "cpu") { showingHardwareTest = true }
                 toolButton(title: "Cài đặt", icon: "gearshape.fill") { showingSettings = true }
@@ -250,11 +328,11 @@ public struct MainDashboardView: View {
     
     private func toolButton(title: String, icon: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            HStack(spacing: 5) {
+            HStack(spacing: 4) {
                 Image(systemName: icon)
-                    .font(.system(size: 12))
+                    .font(.system(size: 11))
                 Text(title)
-                    .font(.system(size: 12, weight: .semibold))
+                    .font(.system(size: 11, weight: .semibold))
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, 8)

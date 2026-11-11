@@ -27,6 +27,9 @@
 		0366047E1EAD5CC5EA2D8838 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B6C00F877111216236EB6BB /* SettingsView.swift */; };
 		8EFED843B987045526FD1A62 /* RoutePlannerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E28ADEF50E751AE2C6AAA05 /* RoutePlannerView.swift */; };
 		410D37F8E0F64DD87391EF6E /* MainDashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EFA9D4A523E07F6B741EDD72 /* MainDashboardView.swift */; };
+		A1110001C9621F6EB8276001 /* TrafficCamera.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1110001A57EC2A810FA2001 /* TrafficCamera.swift */; };
+		A1110002C9621F6EB8276002 /* TrafficCameraManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1110002A57EC2A810FA2002 /* TrafficCameraManager.swift */; };
+		A1110003C9621F6EB8276003 /* TrafficCameraListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1110003A57EC2A810FA2003 /* TrafficCameraListView.swift */; };
 		04A7814E4EEC70DE7D6C41B1 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 8D562B3E40B6C9EC53F38F07 /* Assets.xcassets */; };
 /* End PBXBuildFile section */
 
@@ -51,6 +54,9 @@
 		9B6C00F877111216236EB6BB /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Views/SettingsView.swift"; sourceTree = "<group>"; };
 		6E28ADEF50E751AE2C6AAA05 /* RoutePlannerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Views/RoutePlannerView.swift"; sourceTree = "<group>"; };
 		EFA9D4A523E07F6B741EDD72 /* MainDashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Views/MainDashboardView.swift"; sourceTree = "<group>"; };
+		B1110001A57EC2A810FA2001 /* TrafficCamera.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Models/TrafficCamera.swift"; sourceTree = "<group>"; };
+		B1110002A57EC2A810FA2002 /* TrafficCameraManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Navigation/TrafficCameraManager.swift"; sourceTree = "<group>"; };
+		B1110003A57EC2A810FA2003 /* TrafficCameraListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Views/TrafficCameraListView.swift"; sourceTree = "<group>"; };
 		8D562B3E40B6C9EC53F38F07 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		BCB51839EEA339E71371A29B /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		99006388588CE7D539A04F10 /* GPSSmartTurnSignal.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = GPSSmartTurnSignal.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -98,6 +104,9 @@
 				9B6C00F877111216236EB6BB /* SettingsView.swift */,
 				6E28ADEF50E751AE2C6AAA05 /* RoutePlannerView.swift */,
 				EFA9D4A523E07F6B741EDD72 /* MainDashboardView.swift */,
+				B1110001A57EC2A810FA2001 /* TrafficCamera.swift */,
+				B1110002A57EC2A810FA2002 /* TrafficCameraManager.swift */,
+				B1110003A57EC2A810FA2003 /* TrafficCameraListView.swift */,
 				8D562B3E40B6C9EC53F38F07 /* Assets.xcassets */,
 				BCB51839EEA339E71371A29B /* Info.plist */,
 			);
@@ -201,6 +210,9 @@
 				0366047E1EAD5CC5EA2D8838 /* SettingsView.swift in Sources */,
 				8EFED843B987045526FD1A62 /* RoutePlannerView.swift in Sources */,
 				410D37F8E0F64DD87391EF6E /* MainDashboardView.swift in Sources */,
+				A1110001C9621F6EB8276001 /* TrafficCamera.swift in Sources */,
+				A1110002C9621F6EB8276002 /* TrafficCameraManager.swift in Sources */,
+				A1110003C9621F6EB8276003 /* TrafficCameraListView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

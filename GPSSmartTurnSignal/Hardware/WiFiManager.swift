@@ -75,6 +75,8 @@ public final class WiFiManager: ObservableObject {
         case .turnLeft: dirParam = "left"
         case .turnRight: dirParam = "right"
         case .turnOff: dirParam = "off"
+        case .cameraWarningOn: dirParam = "camera_on"
+        case .cameraWarningOff: dirParam = "camera_off"
         }
         
         guard let url = URL(string: "http://\(settings.wifiHost):\(settings.wifiPort)/api/turn?direction=\(dirParam)") else {

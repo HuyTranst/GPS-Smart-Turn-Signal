@@ -1,13 +1,16 @@
 /*
  * ==============================================================================
- * DỰ ÁN: GPS SMART TURN SIGNAL - FIRMWARE ESP32
+ * DỰ ÁN: GPS SMART TURN SIGNAL - FIRMWARE ESP32 (V1.1 - THÊM ĐÈN SỐ 3 CAMERA)
  * ==============================================================================
  * Tác giả: HuyTranst
- * Chức năng: Điều khiển Relay Xi Nhan Trái/Phải tự động qua BLE và Wi-Fi
+ * Chức năng:
+ *  - Relay 1: Xi nhan TRÁI (Kích hoạt khi sắp rẽ trái)
+ *  - Relay 2: Xi nhan PHẢI (Kích hoạt khi sắp rẽ phải)
+ *  - Relay 3: Đèn số 3 (Kích hoạt khi cách Camera giao thông 500m)
  * Tính năng an toàn:
- *  - Tự động tắt độc lập bằng Watchdog phần mềm (Mặc định 50 giây)
- *  - Khóa liên động cứng (Interlocking): Tuyệt đối KHÔNG BAO GIỜ bật đồng thời 2 bên
- *  - Khởi động an toàn: Relay luôn ở trạng thái OFF khi ESP32 khởi động/reset
+ *  - Tự động tắt độc lập bằng Watchdog phần mềm (Mặc định 50 giây cho xi nhan, 60 giây cho camera)
+ *  - Khóa liên động cứng: Tuyệt đối KHÔNG BAO GIỜ bật đồng thời xi nhan trái & phải
+ *  - Khởi động an toàn: Toàn bộ Relay luôn ở trạng thái OFF khi ESP32 khởi động/reset
  *  - Hỗ trợ đồng thời Bluetooth Low Energy (BLE) và WebServer HTTP nội bộ
  * ==============================================================================
  */
@@ -21,13 +24,13 @@
 #include <BLE2902.h>
 
 // ======================= CẤU HÌNH PHẦN CỨNG GPIO =======================
-#define PIN_RELAY_LEFT       26  // Chân điều khiển Relay xi nhan TRÁI
-#define PIN_RELAY_RIGHT      27  // Chân điều khiển Relay xi nhan PHẢI
+#define PIN_RELAY_LEFT       26  // Relay 1: Xi nhan TRÁI
+#define PIN_RELAY_RIGHT      27  // Relay 2: Xi nhan PHẢI
+#define PIN_RELAY_CAMERA     14  // Relay 3: ĐÈN SỐ 3 - Cảnh báo Camera giao thông
 #define PIN_STATUS_LED       2   // Đèn LED báo hiệu trạng thái (Onboard LED ESP32)
-#define PIN_BUZZER           25  // Còi bíp cảnh báo (tùy chọn)
+#define PIN_BUZZER           25  // Còi bíp cảnh báo
 
 // Đa số module Relay trên thị trường kích mức THẤP (Active LOW)
-// Mức LOW = Relay ĐÓNG (Bật đèn), Mức HIGH = Relay NGẮT (Tắt đèn)
 #define RELAY_ACTIVE_LEVEL   LOW
 #define RELAY_INACTIVE_LEVEL HIGH
 
@@ -38,7 +41,6 @@
 #define CHARACTERISTIC_STATE "1C95D5E3-D6F7-413A-AEB2-E8330D644D7B"
 
 // ======================= CẤU HÌNH WI-FI =======================
-// Mặc định phát Access Point (AP) độc lập trên xe (không cần router)
 const char* AP_SSID = "GPS_Smart_Signal";
 const char* AP_PASS = "12345678";
 WebServer server(80);
@@ -46,8 +48,12 @@ WebServer server(80);
 // ======================= BIẾN TRẠNG THÁI VÀ BỘ ĐẾM =======================
 bool isLeftActive = false;
 bool isRightActive = false;
-unsigned long autoTurnOffDurationMs = 50000; // Mặc định 50 giây tự tắt
+bool isCameraActive = false;
+
+unsigned long autoTurnOffDurationMs = 50000;    // 50 giây tự tắt xi nhan
+unsigned long autoCameraOffDurationMs = 60000;   // 60 giây tự tắt đèn camera bảo vệ ắc quy
 unsigned long relayStartTimeMs = 0;
+unsigned long cameraStartTimeMs = 0;
 
 BLEServer* pServer = nullptr;
 BLECharacteristic* pCmdCharacteristic = nullptr;
@@ -58,6 +64,8 @@ bool bleDeviceConnected = false;
 void turnOffAllRelays();
 void activateLeftRelay();
 void activateRightRelay();
+void activateCameraRelay();
+void deactivateCameraRelay();
 void updateStatusBroadcast();
 String getStatusJson();
 void beepBuzzer(int count);
@@ -93,6 +101,10 @@ class CommandCallbacks : public BLECharacteristicCallbacks {
             activateRightRelay();
         } else if (value.indexOf("TURN_OFF") >= 0) {
             turnOffAllRelays();
+        } else if (value.indexOf("CAMERA_ON") >= 0 || value.indexOf("CAM_ON") >= 0) {
+            activateCameraRelay();
+        } else if (value.indexOf("CAMERA_OFF") >= 0 || value.indexOf("CAM_OFF") >= 0) {
+            deactivateCameraRelay();
         } else if (value.indexOf("CONFIG:DURATION=") >= 0) {
             int idx = value.indexOf("=") + 1;
             int sec = value.substring(idx).toInt();
@@ -116,11 +128,15 @@ void handleTurn() {
             activateRightRelay();
         } else if (dir == "off") {
             turnOffAllRelays();
+        } else if (dir == "camera_on" || dir == "cam_on") {
+            activateCameraRelay();
+        } else if (dir == "camera_off" || dir == "cam_off") {
+            deactivateCameraRelay();
         }
         updateStatusBroadcast();
         server.send(200, "application/json", getStatusJson());
     } else {
-        server.send(400, "text/plain", "Missing direction param (left|right|off)");
+        server.send(400, "text/plain", "Missing direction param (left|right|off|camera_on|camera_off)");
     }
 }
 
@@ -133,7 +149,7 @@ void handleConfig() {
         int sec = server.arg("duration").toInt();
         if (sec >= 5 && sec <= 300) {
             autoTurnOffDurationMs = sec * 1000UL;
-            Serial.printf("[HTTP CONFIG] Cập nhật tự tắt: %d giây\n", sec);
+            Serial.printf("[HTTP CONFIG] Cập nhật tự tắt xi nhan: %d giây\n", sec);
             server.send(200, "application/json", "{\"status\":\"ok\",\"duration_sec\":" + String(sec) + "}");
             return;
         }
@@ -147,21 +163,22 @@ void handleConfig() {
 void turnOffAllRelays() {
     digitalWrite(PIN_RELAY_LEFT, RELAY_INACTIVE_LEVEL);
     digitalWrite(PIN_RELAY_RIGHT, RELAY_INACTIVE_LEVEL);
+    digitalWrite(PIN_RELAY_CAMERA, RELAY_INACTIVE_LEVEL);
     isLeftActive = false;
     isRightActive = false;
+    isCameraActive = false;
     relayStartTimeMs = 0;
-    Serial.println("[RELAY] Tất cả Relay: OFF");
+    cameraStartTimeMs = 0;
+    Serial.println("[RELAY] Tất cả Relay (Trái, Phải, Đèn số 3 Camera): OFF");
 }
 
 /// Kích hoạt relay Trái (Đảm bảo ngắt relay Phải trước)
 void activateLeftRelay() {
-    // Khóa liên động: Nếu relay Phải đang bật, ngắt ngay lập tức
     if (isRightActive) {
         digitalWrite(PIN_RELAY_RIGHT, RELAY_INACTIVE_LEVEL);
         isRightActive = false;
-        delay(50); // Khoảng thời gian dead-time 50ms chống hồ quang
+        delay(50);
     }
-
     digitalWrite(PIN_RELAY_LEFT, RELAY_ACTIVE_LEVEL);
     isLeftActive = true;
     relayStartTimeMs = millis();
@@ -171,13 +188,11 @@ void activateLeftRelay() {
 
 /// Kích hoạt relay Phải (Đảm bảo ngắt relay Trái trước)
 void activateRightRelay() {
-    // Khóa liên động: Nếu relay Trái đang bật, ngắt ngay lập tức
     if (isLeftActive) {
         digitalWrite(PIN_RELAY_LEFT, RELAY_INACTIVE_LEVEL);
         isLeftActive = false;
-        delay(50); // Khoảng thời gian dead-time 50ms chống hồ quang
+        delay(50);
     }
-
     digitalWrite(PIN_RELAY_RIGHT, RELAY_ACTIVE_LEVEL);
     isRightActive = true;
     relayStartTimeMs = millis();
@@ -185,7 +200,24 @@ void activateRightRelay() {
     Serial.println("[RELAY] Xi nhan PHẢI: ON");
 }
 
-/// Phát tiếng bíp cảnh báo (tùy chọn)
+/// Kích hoạt relay 3: BẬT ĐÈN SỐ 3 CẢNH BÁO CAMERA GIAO THÔNG (500M)
+void activateCameraRelay() {
+    digitalWrite(PIN_RELAY_CAMERA, RELAY_ACTIVE_LEVEL);
+    isCameraActive = true;
+    cameraStartTimeMs = millis();
+    beepBuzzer(3); // Bíp 3 tiếng dồn dập cảnh báo có camera
+    Serial.println("[RELAY] ĐÈN SỐ 3 (CAMERA GIAO THÔNG 500M): ON");
+}
+
+/// Tắt relay 3: TẮT ĐÈN SỐ 3 CẢNH BÁO CAMERA
+void deactivateCameraRelay() {
+    digitalWrite(PIN_RELAY_CAMERA, RELAY_INACTIVE_LEVEL);
+    isCameraActive = false;
+    cameraStartTimeMs = 0;
+    Serial.println("[RELAY] ĐÈN SỐ 3 (CAMERA GIAO THÔNG): OFF");
+}
+
+/// Phát tiếng bíp cảnh báo
 void beepBuzzer(int count) {
     for (int i = 0; i < count; i++) {
         digitalWrite(PIN_BUZZER, HIGH);
@@ -208,6 +240,7 @@ String getStatusJson() {
     String json = "{";
     json += "\"left\":" + String(isLeftActive ? "true" : "false") + ",";
     json += "\"right\":" + String(isRightActive ? "true" : "false") + ",";
+    json += "\"camera\":" + String(isCameraActive ? "true" : "false") + ",";
     json += "\"remaining_sec\":" + String(remainingSec) + ",";
     json += "\"duration_sec\":" + String(autoTurnOffDurationMs / 1000UL) + ",";
     json += "\"ble_connected\":" + String(bleDeviceConnected ? "true" : "false");
@@ -230,21 +263,23 @@ void setup() {
     delay(200);
     Serial.println("\n\n==================================================");
     Serial.println("  KHỞI ĐỘNG HỆ THỐNG GPS SMART TURN SIGNAL ESP32");
+    Serial.println("  HỖ TRỢ RELAY 1 (TRÁI), RELAY 2 (PHẢI), RELAY 3 (CAMERA)");
     Serial.println("==================================================");
 
     // BẢO VỆ AN TOÀN: Đặt mức điện áp INACTIVE TRƯỚC KHI pinMode OUTPUT
-    // Tránh việc relay bị nháy bật một tích tắc lúc vừa cấp nguồn!
     digitalWrite(PIN_RELAY_LEFT, RELAY_INACTIVE_LEVEL);
     digitalWrite(PIN_RELAY_RIGHT, RELAY_INACTIVE_LEVEL);
+    digitalWrite(PIN_RELAY_CAMERA, RELAY_INACTIVE_LEVEL);
     digitalWrite(PIN_STATUS_LED, LOW);
     digitalWrite(PIN_BUZZER, LOW);
 
     pinMode(PIN_RELAY_LEFT, OUTPUT);
     pinMode(PIN_RELAY_RIGHT, OUTPUT);
+    pinMode(PIN_RELAY_CAMERA, OUTPUT);
     pinMode(PIN_STATUS_LED, OUTPUT);
     pinMode(PIN_BUZZER, OUTPUT);
 
-    // 1. Cấu hình Wi-Fi SoftAP (Tạo mạng Wi-Fi cục bộ trên xe)
+    // 1. Cấu hình Wi-Fi SoftAP
     WiFi.mode(WIFI_AP);
     WiFi.softAP(AP_SSID, AP_PASS);
     Serial.print("[WIFI AP] Đã phát mạng Wi-Fi: ");
@@ -252,7 +287,6 @@ void setup() {
     Serial.print("[WIFI AP] Địa chỉ IP ESP32: ");
     Serial.println(WiFi.softAPIP());
 
-    // Cài đặt các tuyến REST API HTTP
     server.on("/api/turn", HTTP_GET, handleTurn);
     server.on("/api/status", HTTP_GET, handleStatus);
     server.on("/api/config", HTTP_POST, handleConfig);
@@ -266,14 +300,12 @@ void setup() {
 
     BLEService* pService = pServer->createService(SERVICE_UUID);
 
-    // Characteristic nhận lệnh từ iPhone (Write)
     pCmdCharacteristic = pService->createCharacteristic(
         CHARACTERISTIC_CMD,
         BLECharacteristic::PROPERTY_WRITE | BLECharacteristic::PROPERTY_WRITE_NR
     );
     pCmdCharacteristic->setCallbacks(new CommandCallbacks());
 
-    // Characteristic phát trạng thái về iPhone (Notify/Read)
     pStatusCharacteristic = pService->createCharacteristic(
         CHARACTERISTIC_STATE,
         BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_NOTIFY
@@ -282,7 +314,6 @@ void setup() {
 
     pService->start();
 
-    // Bắt đầu phát quảng bá BLE (Advertising)
     BLEAdvertising* pAdvertising = BLEDevice::getAdvertising();
     pAdvertising->addServiceUUID(SERVICE_UUID);
     pAdvertising->setScanResponse(true);
@@ -291,27 +322,38 @@ void setup() {
     BLEDevice::startAdvertising();
 
     Serial.println("[BLE] GATT Server đã khởi động. Đang phát quảng bá...");
-    beepBuzzer(3); // Bíp 3 tiếng báo khởi động thành công
+    beepBuzzer(3);
 }
 
 // ======================= LOOP CHÍNH =======================
 void loop() {
-    // 1. Phục vụ các yêu cầu HTTP từ iPhone
+    // 1. Phục vụ yêu cầu HTTP từ iPhone
     server.handleClient();
 
-    // 2. BỘ ĐẾM THỜI GIAN TỰ TẮT ĐỘC LẬP (WATCHDOG TIMER PHẦN MỀM)
-    // Nếu relay đang bật và thời gian vượt quá autoTurnOffDurationMs (50 giây)
-    // ESP32 sẽ tự động ngắt relay ngay cả khi iPhone mất kết nối hoặc bị tắt nguồn!
+    // 2. WATCHDOG TIMER TỰ TẮT XI NHAN (Mặc định 50 giây)
     if (isLeftActive || isRightActive) {
         if (millis() - relayStartTimeMs >= autoTurnOffDurationMs) {
-            Serial.printf("[WATCHDOG] Hết thời gian %lu giây. TỰ ĐỘNG TẮT RELAY!\n", autoTurnOffDurationMs / 1000UL);
-            turnOffAllRelays();
+            Serial.printf("[WATCHDOG] Hết thời gian xi nhan %lu giây. TỰ ĐỘNG TẮT!\n", autoTurnOffDurationMs / 1000UL);
+            digitalWrite(PIN_RELAY_LEFT, RELAY_INACTIVE_LEVEL);
+            digitalWrite(PIN_RELAY_RIGHT, RELAY_INACTIVE_LEVEL);
+            isLeftActive = false;
+            isRightActive = false;
+            relayStartTimeMs = 0;
             updateStatusBroadcast();
             beepBuzzer(1);
         }
     }
 
-    // Nhấp nháy nhẹ LED trạng thái nếu không có BLE kết nối
+    // 3. WATCHDOG TIMER TỰ TẮT ĐÈN SỐ 3 CAMERA (Mặc định 60 giây nếu app mất kết nối)
+    if (isCameraActive) {
+        if (millis() - cameraStartTimeMs >= autoCameraOffDurationMs) {
+            Serial.println("[WATCHDOG] Quá 60 giây không có lệnh mới. TỰ ĐỘNG TẮT ĐÈN CAMERA SỐ 3!");
+            deactivateCameraRelay();
+            updateStatusBroadcast();
+        }
+    }
+
+    // Nhấp nháy LED trạng thái nếu chưa kết nối BLE
     if (!bleDeviceConnected) {
         static unsigned long lastBlinkMs = 0;
         if (millis() - lastBlinkMs > 1000) {
@@ -320,5 +362,5 @@ void loop() {
         }
     }
 
-    delay(5); // Cho phép CPU rảnh rỗi và xử lý tác vụ nền của ESP32 RTOS
+    delay(5);
 }

@@ -10,6 +10,7 @@ Tài liệu hướng dẫn chi tiết cách đấu nối mạch điều khiển 
 | :--- | :--- | :--- | :--- |
 | **GPIO 26** | **IN1** (Module Relay) | Điều khiển xi nhan **TRÁI** | Mức LOW = Bật, HIGH = Tắt |
 | **GPIO 27** | **IN2** (Module Relay) | Điều khiển xi nhan **PHẢI** | Mức LOW = Bật, HIGH = Tắt |
+| **GPIO 14** | **IN3** (Module Relay) | Điều khiển **ĐÈN SỐ 3 (Camera 500m)** | Kích bật đèn LED báo camera |
 | **GPIO 2** | **LED Onboard** | Đèn báo trạng thái kết nối | Sáng khi BLE đã kết nối |
 | **GPIO 25** | **Còi Buzzer 5V** (Tùy chọn) | Bíp báo động khi chuyển hướng | Cực dương còi (+), cực âm GND |
 | **5V / VIN** | **OUT+** của Mạch hạ áp 5V | Nguồn nuôi 5V DC cho ESP32 | Tuyệt đối không cấp quá 5.5V |

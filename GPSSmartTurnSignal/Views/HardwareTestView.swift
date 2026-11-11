@@ -102,9 +102,31 @@ public struct HardwareTestView: View {
                         .buttonStyle(PlainButtonStyle())
                     }
                     
+                    // Nút kiểm tra Relay 3: Đèn số 3 Camera
+                    HStack {
+                        Button(action: {
+                            hardware.sendCommand(.cameraWarningOn)
+                        }) {
+                            Label("BẬT ĐÈN SỐ 3 (CAMERA)", systemImage: "camera.fill")
+                                .foregroundColor(.orange)
+                                .font(.system(size: 14, weight: .bold))
+                        }
+                        Spacer()
+                        Button("TẮT") {
+                            hardware.sendCommand(.cameraWarningOff)
+                        }
+                        .foregroundColor(.secondary)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 4)
+                        .background(Color.gray.opacity(0.2))
+                        .cornerRadius(6)
+                    }
+                    .padding(.vertical, 4)
+                    
                     // Nút TẮT KHẨN CẤP
                     Button(action: {
                         controller.turnOff()
+                        hardware.sendCommand(.cameraWarningOff)
                     }) {
                         HStack {
                             Spacer()

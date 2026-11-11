@@ -1,6 +1,23 @@
 import SwiftUI
 import MapKit
 
+/// Điểm đánh dấu Camera giao thông trên bản đồ
+public class TrafficCameraAnnotation: MKPointAnnotation {
+    public var camera: TrafficCamera
+    
+    public init(camera: TrafficCamera) {
+        self.camera = camera
+        super.init()
+        self.coordinate = camera.coordinate
+        self.title = camera.title
+        if let speed = camera.speedLimitKmh {
+            self.subtitle = "Giới hạn: \(speed) km/h • \(camera.sourceType.rawValue)"
+        } else {
+            self.subtitle = camera.sourceType.rawValue
+        }
+    }
+}
+
 /// Bộ tạo hình ảnh biểu tượng phương tiện (xe ô tô / xe máy thể thao nhìn từ trên xuống)
 public struct VehicleIconGenerator {
     public static func createSportVehicleIcon() -> UIImage {
@@ -125,13 +142,11 @@ public class VehicleAnnotationView: MKAnnotationView {
 
 /// MKTileOverlay tùy chỉnh: Khắc phục triệt để lỗi màn hình đen khi xoay xe hoặc mạng tải chậm
 public class OfflineMKTileOverlay: MKTileOverlay {
-    // 1x1 Transparent PNG data để thay thế khi không có tile
     private static let transparentPixelPNG: Data = {
         let base64 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII="
         return Data(base64Encoded: base64) ?? Data()
     }()
     
-    // URLSession riêng biệt với bộ nhớ đệm RAM 50MB và 250MB đĩa để nạp cực nhanh khi xoay 360 độ
     private let tileSession: URLSession = {
         let config = URLSessionConfiguration.default
         config.urlCache = URLCache(
@@ -150,7 +165,6 @@ public class OfflineMKTileOverlay: MKTileOverlay {
     }
     
     public override func url(forTilePath path: MKTileOverlayPath) -> URL {
-        // Luân phiên phân tải qua 3 máy chủ a, b, c của OpenStreetMap để tránh bị bóp băng thông khi xoay xe
         let subdomains = ["a", "b", "c"]
         let index = abs(path.x + path.y) % subdomains.count
         let host = subdomains[index]
@@ -158,13 +172,11 @@ public class OfflineMKTileOverlay: MKTileOverlay {
     }
     
     public override func loadTile(at path: MKTileOverlayPath, result: @escaping (Data?, Error?) -> Void) {
-        // 1. Ưu tiên đọc dữ liệu tile từ bộ nhớ máy (Offline hoàn toàn)
         if let offlineData = OfflineMapTileManager.shared.getOfflineTileData(z: path.z, x: path.x, y: path.y) {
             result(offlineData, nil)
             return
         }
         
-        // 2. Tải trực tuyến với phân tải đa luồng
         let osmURL = self.url(forTilePath: path)
         var request = URLRequest(url: osmURL, cachePolicy: .returnCacheDataElseLoad, timeoutInterval: 3.0)
         request.setValue("GPS-Smart-Turn-Signal-iOS/1.0", forHTTPHeaderField: "User-Agent")
@@ -179,17 +191,17 @@ public class OfflineMKTileOverlay: MKTileOverlay {
                 try? d.write(to: localURL)
                 result(d, nil)
             } else {
-                // Trả về pixel trong suốt để MapKit để lộ bản đồ màu sáng liền mạch phía dưới
                 result(Self.transparentPixelPNG, nil)
             }
         }.resume()
     }
 }
 
-/// UIViewRepresentable bọc MKMapView với biểu tượng xe đẹp mắt và đồng bộ tông màu sáng chống đen xì
+/// UIViewRepresentable bọc MKMapView với biểu tượng xe, camera giao thông và đồng bộ tông màu sáng
 public struct OfflineMapView: UIViewRepresentable {
     @ObservedObject var locationManager = LocationManager.shared
     @ObservedObject var navigationEngine = NavigationEngine.shared
+    @ObservedObject var cameraManager = TrafficCameraManager.shared
     
     public init() {}
     
@@ -200,13 +212,8 @@ public struct OfflineMapView: UIViewRepresentable {
         mapView.showsCompass = true
         mapView.showsScale = false
         
-        // ĐẶC BIỆT QUAN TRỌNG ĐỂ HẾT BỊ ĐEN:
-        // Đặt riêng MKMapView ở tông màu Light để lớp nền mặc định của Apple Maps bên dưới
-        // luôn cùng màu trắng sáng với OpenStreetMap. Khi xoay xe hoặc mạng chậm,
-        // nền phía dưới là bản đồ Apple màu sáng, KHÔNG BAO GIỜ BỊ ĐEN XÌ NỬA MÀN HÌNH!
         mapView.overrideUserInterfaceStyle = .light
         
-        // Cài đặt lớp bản đồ OpenStreetMap với canReplaceMapContent = false
         let tileOverlay = OfflineMKTileOverlay()
         mapView.addOverlay(tileOverlay, level: .aboveRoads)
         
@@ -221,6 +228,9 @@ public struct OfflineMapView: UIViewRepresentable {
             context.coordinator.clearRoute(on: mapView)
         }
         
+        // Cập nhật danh sách điểm đánh dấu Camera giao thông
+        context.coordinator.updateCameras(cameras: cameraManager.allCameras, on: mapView)
+        
         // Cập nhật hướng xe xoay mượt mà
         if let userView = mapView.view(for: mapView.userLocation) as? VehicleAnnotationView {
             let course = locationManager.currentCourse
@@ -229,7 +239,7 @@ public struct OfflineMapView: UIViewRepresentable {
             }
         }
         
-        // Tự động điều chỉnh góc zoom mượt mà theo cự ly bao quát rộng hơn
+        // Tự động điều chỉnh góc zoom phẳng 2D
         if let loc = locationManager.currentLocation {
             context.coordinator.handleSmartAutoZoom(
                 location: loc,
@@ -248,6 +258,7 @@ public struct OfflineMapView: UIViewRepresentable {
         weak var mapView: MKMapView?
         private var currentPolyline: MKPolyline?
         private var maneuverAnnotations: [MKPointAnnotation] = []
+        private var cameraAnnotations: [TrafficCameraAnnotation] = []
         
         private var lastZoomDistance: Double = 0.0
         private var lastZoomTime: Date = Date.distantPast
@@ -266,7 +277,6 @@ public struct OfflineMapView: UIViewRepresentable {
                 let targetDist = self.calculateTargetDistance(speedKmh: LocationManager.shared.currentSpeedKmh)
                 self.lastZoomDistance = targetDist
                 self.lastZoomTime = Date()
-                // PITCH = 0: Góc nhìn thẳng 2D triệt tiêu hoàn toàn hiện tượng méo cắt chéo
                 let cam = MKMapCamera(
                     lookingAtCenter: loc.coordinate,
                     fromDistance: targetDist,
@@ -277,13 +287,11 @@ public struct OfflineMapView: UIViewRepresentable {
             }
         }
         
-        /// Xử lý tự động zoom theo tốc độ di chuyển thực tế (Góc nhìn phẳng 2D phẳng, không bị cắt xéo)
         public func handleSmartAutoZoom(location: CLLocation, speedKmh: Double, course: Double) {
             guard let mapView = mapView else { return }
             
             let now = Date()
             
-            // 1. Khi vừa mở app: Zoom mượt vào vị trí hiện tại với cự ly bao quát rộng rãi
             if !hasInitialZoomed {
                 hasInitialZoomed = true
                 let initialDist = calculateTargetDistance(speedKmh: speedKmh)
@@ -293,7 +301,7 @@ public struct OfflineMapView: UIViewRepresentable {
                 let camera = MKMapCamera(
                     lookingAtCenter: location.coordinate,
                     fromDistance: initialDist,
-                    pitch: 0, // Nhìn thẳng 2D, xoay đĩa tròn không bao giờ vỡ hình
+                    pitch: 0,
                     heading: course >= 0 ? course : 0
                 )
                 mapView.setCamera(camera, animated: true)
@@ -312,7 +320,7 @@ public struct OfflineMapView: UIViewRepresentable {
                 let camera = MKMapCamera(
                     lookingAtCenter: location.coordinate,
                     fromDistance: targetDist,
-                    pitch: 0, // PITCH = 0 phẳng 2D
+                    pitch: 0,
                     heading: heading
                 )
                 
@@ -320,29 +328,26 @@ public struct OfflineMapView: UIViewRepresentable {
                     mapView.setCamera(camera, animated: true)
                 }
             } else if timeSinceLast >= 1.5 {
-                // Giữ nguyên độ cao zoom hiện tại (kể cả khi người dùng tự tay chỉnh zoom), chỉ lướt camera theo tâm xe
                 let currentDistance = mapView.camera.centerCoordinateDistance
                 let effectiveDistance = currentDistance > 200 ? currentDistance : targetDist
                 let heading = course >= 0 ? course : mapView.camera.heading
                 let camera = MKMapCamera(
                     lookingAtCenter: location.coordinate,
                     fromDistance: effectiveDistance,
-                    pitch: 0, // PITCH = 0 phẳng 2D
+                    pitch: 0,
                     heading: heading
                 )
                 mapView.setCamera(camera, animated: true)
             }
         }
         
-        /// Cự ly zoom đã được nới rộng thêm 15-20% (Zoom nhỏ lại) theo yêu cầu người dùng
-        /// Giúp bao quát ngã tư và giảm 60% số lượng tile cần nạp, triệt tiêu lỗi thiếu tile khi xoay
         private func calculateTargetDistance(speedKmh: Double) -> Double {
             if speedKmh < 15.0 {
-                return 680.0 // Mặc định đứng yên/chậm: lùi xa 680m (trước là 420m)
+                return 680.0
             } else if speedKmh < 45.0 {
-                return 920.0 // Chạy phố: lùi xa 920m (trước là 650m)
+                return 920.0
             } else {
-                return 1350.0 // Đường trường/đại lộ: lùi xa 1350m (trước là 950m)
+                return 1350.0
             }
         }
         
@@ -364,6 +369,7 @@ public struct OfflineMapView: UIViewRepresentable {
         }
         
         public func mapView(_ mapView: MKMapView, viewFor annotation: MKAnnotation) -> MKAnnotationView? {
+            // 1. Biểu tượng chiếc xe cho người dùng
             if annotation is MKUserLocation {
                 let userIdentifier = "UserVehicleMarker"
                 var vehicleView = mapView.dequeueReusableAnnotationView(withIdentifier: userIdentifier) as? VehicleAnnotationView
@@ -380,6 +386,22 @@ public struct OfflineMapView: UIViewRepresentable {
                 return vehicleView
             }
             
+            // 2. Biểu tượng Camera giao thông (Màu đỏ nổi bật)
+            if let camAnnotation = annotation as? TrafficCameraAnnotation {
+                let identifier = "TrafficCameraMarker"
+                var view = mapView.dequeueReusableAnnotationView(withIdentifier: identifier) as? MKMarkerAnnotationView
+                if view == nil {
+                    view = MKMarkerAnnotationView(annotation: annotation, reuseIdentifier: identifier)
+                    view?.canShowCallout = true
+                } else {
+                    view?.annotation = annotation
+                }
+                view?.markerTintColor = UIColor.systemRed
+                view?.glyphImage = UIImage(systemName: "camera.fill")
+                return view
+            }
+            
+            // 3. Điểm đánh dấu nút rẽ lộ trình
             let identifier = "ManeuverNode"
             var view = mapView.dequeueReusableAnnotationView(withIdentifier: identifier) as? MKMarkerAnnotationView
             if view == nil {
@@ -392,6 +414,22 @@ public struct OfflineMapView: UIViewRepresentable {
             view?.markerTintColor = UIColor.systemOrange
             view?.glyphImage = UIImage(systemName: "arrow.turn.up.right")
             return view
+        }
+        
+        /// Cập nhật các điểm Camera trên bản đồ
+        func updateCameras(cameras: [TrafficCamera], on mapView: MKMapView) {
+            let existingIds = Set(cameraAnnotations.map { $0.camera.id })
+            let newIds = Set(cameras.map { $0.id })
+            if existingIds == newIds { return }
+            
+            mapView.removeAnnotations(cameraAnnotations)
+            cameraAnnotations.removeAll()
+            
+            for cam in cameras {
+                let ann = TrafficCameraAnnotation(camera: cam)
+                cameraAnnotations.append(ann)
+                mapView.addAnnotation(ann)
+            }
         }
         
         func updateRoute(route: NavigationRoute, on mapView: MKMapView) {
