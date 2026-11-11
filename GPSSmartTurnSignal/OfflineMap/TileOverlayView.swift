@@ -131,8 +131,8 @@ public class OfflineMKTileOverlay: MKTileOverlay {
         return Data(base64Encoded: base64) ?? Data()
     }()
     
-    public override init() {
-        super.init(urlTemplate: "https://tile.openstreetmap.org/{z}/{x}/{y}.png")
+    public override init(urlTemplate URLTemplate: String? = "https://tile.openstreetmap.org/{z}/{x}/{y}.png") {
+        super.init(urlTemplate: URLTemplate)
         // Quan trọng: Để false để MapKit không coi lớp này che toàn bộ màn hình, tránh lỗi ô vuông đen
         self.canReplaceMapContent = false
     }
