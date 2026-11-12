@@ -30,14 +30,16 @@ public final class LocationManager: NSObject, ObservableObject, CLLocationManage
     @Published public var currentCoordinate: CLLocationCoordinate2D = CLLocationCoordinate2D(latitude: 21.0285, longitude: 105.8544)
     @Published public var currentSpeedKmh: Double = 0.0
     @Published public var currentCourse: Double = 0.0
+    @Published public var instantCourse: Double = 0.0 // Góc tức thời không qua làm trễ để phát hiện rẽ ngay
     @Published public var horizontalAccuracy: Double = -1.0
     @Published public var signalQuality: GPSSignalQuality = .none
     @Published public var isAuthorized: Bool = false
     @Published public var isNavigatingBackground: Bool = false
     
-    // Lọc làm mịn góc di chuyển (smoothing bearing)
+    // Lọc nhẹ chỉ 2 mẫu để xoay bản đồ mượt mà không làm trễ góc lái
     private var recentCourses: [Double] = []
-    private let courseWindowSize = 5
+    private let courseWindowSize = 2
+    private var previousLocation: CLLocation?
     
     public override init() {
         super.init()
@@ -48,7 +50,7 @@ public final class LocationManager: NSObject, ObservableObject, CLLocationManage
         locationManager.delegate = self
         locationManager.desiredAccuracy = kCLLocationAccuracyBestForNavigation
         locationManager.activityType = .automotiveNavigation
-        locationManager.distanceFilter = 2.0 // Cập nhật mỗi khi di chuyển 2m
+        locationManager.distanceFilter = kCLDistanceFilterNone // Cập nhật tức thì liên tục không trễ mét nào
         
         // Hỗ trợ chạy ngầm tối đa cho ứng dụng dẫn đường
         locationManager.pausesLocationUpdatesAutomatically = false
@@ -106,20 +108,30 @@ public final class LocationManager: NSObject, ObservableObject, CLLocationManage
     public func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
         guard let location = locations.last else { return }
         
-        currentLocation = location
-        currentCoordinate = location.coordinate
-        
         // Tốc độ di chuyển (chuyển đổi từ m/s sang km/h)
         if location.speed >= 0 {
             currentSpeedKmh = max(0, location.speed * 3.6)
-        } else {
-            currentSpeedKmh = 0.0
+        } else if let prev = previousLocation {
+            let dt = location.timestamp.timeIntervalSince(prev.timestamp)
+            if dt > 0.1 {
+                let dist = location.distance(from: prev)
+                currentSpeedKmh = (dist / dt) * 3.6
+            }
         }
         
-        // Góc di chuyển (Course / Bearing) kèm thuật toán lọc ổn định
+        // Góc di chuyển tức thời (Instant Course) không qua độ trễ
         if location.course >= 0 {
+            instantCourse = location.course
             updateSmoothedCourse(newCourse: location.course)
+        } else if let prev = previousLocation, location.distance(from: prev) >= 1.5 {
+            let bearing = calculateBearing(from: prev.coordinate, to: location.coordinate)
+            instantCourse = bearing
+            updateSmoothedCourse(newCourse: bearing)
         }
+        
+        previousLocation = location
+        currentCoordinate = location.coordinate
+        currentLocation = location
         
         // Đánh giá độ chính xác ngang của tín hiệu GPS
         horizontalAccuracy = location.horizontalAccuracy
@@ -135,10 +147,23 @@ public final class LocationManager: NSObject, ObservableObject, CLLocationManage
     }
     
     public func locationManager(_ manager: CLLocationManager, didUpdateHeading newHeading: CLHeading) {
-        // Nếu xe đang đứng yên hoặc tốc độ quá chậm, dùng la bàn từ trường
-        if currentSpeedKmh < 3.0 && newHeading.trueHeading >= 0 {
+        // Nếu xe đang đứng yên hoặc đi rất chậm, dùng la bàn điện tử phản hồi tức thì
+        if currentSpeedKmh < 5.0 && newHeading.trueHeading >= 0 && newHeading.headingAccuracy > 0 {
+            instantCourse = newHeading.trueHeading
             updateSmoothedCourse(newCourse: newHeading.trueHeading)
         }
+    }
+    
+    private func calculateBearing(from start: CLLocationCoordinate2D, to dest: CLLocationCoordinate2D) -> Double {
+        let lat1 = start.latitude * .pi / 180.0
+        let lon1 = start.longitude * .pi / 180.0
+        let lat2 = dest.latitude * .pi / 180.0
+        let lon2 = dest.longitude * .pi / 180.0
+        let dLon = lon2 - lon1
+        let y = sin(dLon) * cos(lat2)
+        let x = cos(lat1) * sin(lat2) - sin(lat1) * cos(lat2) * cos(dLon)
+        let radians = atan2(y, x)
+        return (radians * 180.0 / .pi + 360.0).truncatingRemainder(dividingBy: 360.0)
     }
     
     public func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {

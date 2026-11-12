@@ -4,7 +4,7 @@ import Combine
 import AVFoundation
 import UIKit
 
-/// Quản lý phát hiện và cảnh báo Camera giao thông (500m) & Ghi nhớ vị trí thủ công
+/// Quản lý phát hiện và cảnh báo Camera giao thông (Mặc định 150m) & Ghi nhớ vị trí thủ công
 public final class TrafficCameraManager: ObservableObject {
     public static let shared = TrafficCameraManager()
     
@@ -19,8 +19,10 @@ public final class TrafficCameraManager: ObservableObject {
     @Published public var activeWarningCamera: TrafficCamera? = nil
     @Published public var lastActionMessage: String? = nil
     
-    // Cự ly kích hoạt cảnh báo mặc định là 500 mét
-    public let warningThresholdMeters: Double = 500.0
+    // Cự ly kích hoạt cảnh báo động theo Cài đặt (Mặc định 150 mét)
+    public var warningThresholdMeters: Double {
+        return AppSettings.shared.cameraWarningDistanceMeters
+    }
     
     private var activeWarningCameraId: String? = nil
     private var lastSpokenTime: Date = Date.distantPast
@@ -104,10 +106,21 @@ public final class TrafficCameraManager: ObservableObject {
         notifyMessage("Đã xóa camera giao thông")
     }
     
-    // MARK: - Thuật toán Đánh giá Cự ly & Phát Cảnh Báo 500m
+    // MARK: - Thuật toán Đánh giá Cự ly & Phát Cảnh Báo (Mặc định 150m)
     
     private func evaluateCameraProximity(currentLocation: CLLocation) {
+        guard AppSettings.shared.isCameraWarningEnabled else {
+            if isCameraWarningActive {
+                isCameraWarningActive = false
+                activeWarningCamera = nil
+                warningDistanceMeters = 0
+                HardwareService.shared.sendCommand(.cameraWarningOff)
+            }
+            return
+        }
         guard !allCameras.isEmpty else { return }
+        
+        let threshold = warningThresholdMeters
         
         // Tìm camera gần vị trí xe nhất
         var nearestCam: TrafficCamera? = nil
@@ -124,33 +137,37 @@ public final class TrafficCameraManager: ObservableObject {
         
         guard let nearest = nearestCam else { return }
         
-        // KIỂM TRA ĐIỀU KIỆN TRONG VÙNG CẢNH BÁO (<= 500 mét)
-        if minDistance <= warningThresholdMeters {
+        // KIỂM TRA ĐIỀU KIỆN TRONG VÙNG CẢNH BÁO (Mặc định <= 150 mét)
+        if minDistance <= threshold {
             warningDistanceMeters = Int(minDistance)
             activeWarningCamera = nearest
             
-            // Kích hoạt phát cảnh báo lần đầu khi tiến vào vùng 500m
+            // Kích hoạt phát cảnh báo lần đầu khi tiến vào vùng cài đặt
             if activeWarningCameraId != nearest.id {
                 activeWarningCameraId = nearest.id
                 isCameraWarningActive = true
                 
-                print("CẢNH BÁO CAMERA GIAO THÔNG! Cự ly: \(Int(minDistance))m -> BẬT ĐÈN SỐ 3 TRÊN ESP32")
+                print("CẢNH BÁO CAMERA GIAO THÔNG! Cự ly: \(Int(minDistance))m <= \(Int(threshold))m -> BẬT ĐÈN SỐ 3 TRÊN ESP32")
                 
                 // 1. GỬI LỆNH ĐẾN ESP32 ĐỂ MỞ ĐÈN SỐ 3
                 HardwareService.shared.sendCommand(.cameraWarningOn)
                 
                 // 2. PHÁT ÂM THANH CẢNH BÁO TIẾNG VIỆT
-                let speedText = nearest.speedLimitKmh != nil ? ", giới hạn \(nearest.speedLimitKmh!) kilomet trên giờ" : ""
-                let alertSpeech = "Chú ý, phía trước năm trăm mét có camera giao thông\(speedText), vui lòng chú ý tốc độ!"
-                speak(alertSpeech)
+                if AppSettings.shared.isSoundAlertEnabled {
+                    let speedText = nearest.speedLimitKmh != nil ? ", giới hạn \(nearest.speedLimitKmh!) kilomet trên giờ" : ""
+                    let alertSpeech = "Chú ý, phía trước \(Int(threshold)) mét có camera giao thông\(speedText), vui lòng chú ý tốc độ!"
+                    speak(alertSpeech)
+                }
                 
                 // Phản hồi rung cảnh báo
-                let feedback = UINotificationFeedbackGenerator()
-                feedback.notificationOccurred(.warning)
+                if AppSettings.shared.isHapticFeedbackEnabled {
+                    let feedback = UINotificationFeedbackGenerator()
+                    feedback.notificationOccurred(.warning)
+                }
             }
         } else {
-            // Khi xe đã ra khỏi vùng 500 mét (đã vượt qua camera hoặc đi xa hơn 550m)
-            if isCameraWarningActive && minDistance > (warningThresholdMeters + 60.0) {
+            // Khi xe đã ra khỏi vùng cảnh báo
+            if isCameraWarningActive && minDistance > (threshold + 40.0) {
                 print("Đã ra khỏi vùng camera -> TẮT ĐÈN SỐ 3 TRÊN ESP32")
                 isCameraWarningActive = false
                 activeWarningCamera = nil

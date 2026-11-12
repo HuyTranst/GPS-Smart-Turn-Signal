@@ -50,8 +50,8 @@ bool isLeftActive = false;
 bool isRightActive = false;
 bool isCameraActive = false;
 
-unsigned long autoTurnOffDurationMs = 50000;    // 50 giây tự tắt xi nhan
-unsigned long autoCameraOffDurationMs = 60000;   // 60 giây tự tắt đèn camera bảo vệ ắc quy
+unsigned long autoTurnOffDurationMs = 180000;   // Mặc định 180 giây (3 phút) tự tắt xi nhan
+unsigned long autoCameraOffDurationMs = 180000; // Mặc định 180 giây tự tắt đèn camera bảo vệ ắc quy
 unsigned long relayStartTimeMs = 0;
 unsigned long cameraStartTimeMs = 0;
 
@@ -108,7 +108,7 @@ class CommandCallbacks : public BLECharacteristicCallbacks {
         } else if (value.indexOf("CONFIG:DURATION=") >= 0) {
             int idx = value.indexOf("=") + 1;
             int sec = value.substring(idx).toInt();
-            if (sec >= 5 && sec <= 300) {
+            if (sec >= 5 && sec <= 600) {
                 autoTurnOffDurationMs = sec * 1000UL;
                 Serial.printf("[CONFIG] Đã cập nhật thời gian tự tắt: %d giây\n", sec);
             }
@@ -147,7 +147,7 @@ void handleStatus() {
 void handleConfig() {
     if (server.hasArg("duration")) {
         int sec = server.arg("duration").toInt();
-        if (sec >= 5 && sec <= 300) {
+        if (sec >= 5 && sec <= 600) {
             autoTurnOffDurationMs = sec * 1000UL;
             Serial.printf("[HTTP CONFIG] Cập nhật tự tắt xi nhan: %d giây\n", sec);
             server.send(200, "application/json", "{\"status\":\"ok\",\"duration_sec\":" + String(sec) + "}");

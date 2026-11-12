@@ -27,10 +27,15 @@ public final class NavigationEngine: ObservableObject {
     private let settings = AppSettings.shared
     private var cancellables = Set<AnyCancellable>()
     
-    // Biến nội bộ thuật toán nhận diện rẽ tự do
+    // Biến nội bộ thuật toán nhận diện rẽ tự do (Zero-Delay Sliding Window)
+    private struct CourseSample {
+        let timestamp: Date
+        let course: Double
+    }
+    private var courseHistory: [CourseSample] = []
     private var hasEstablishedBaseline = false
-    private var straightCourseCount = 0
     private var turnStartHeading: Double = 0.0
+    private var turnStartTime: Date = Date.distantPast
     private var turnCompletionSteadyCount = 0
     private var lastRecordedCourse: Double = 0.0
     
@@ -55,10 +60,10 @@ public final class NavigationEngine: ObservableObject {
     public func startFreeRideProtection() {
         isAutoProtectActive = true
         hasEstablishedBaseline = false
-        straightCourseCount = 0
+        courseHistory.removeAll()
         turnCompletionSteadyCount = 0
         locationManager.startTracking()
-        print("Free-ride Auto Protection ACTIVE")
+        print("Free-ride Auto Protection ACTIVE (Zero-Delay Mode)")
     }
     
     // MARK: - Xử Lý GPS Thời Gian Thực
@@ -76,83 +81,115 @@ public final class NavigationEngine: ObservableObject {
         processFreeRideTurnDetection(location: location)
     }
     
-    /// Thuật toán tự động nhận diện xe bẻ lái vào ngã rẽ khi chạy tự do trên đường
+    /// Thuật toán nhận diện bẻ lái TỨC THÌ (Vừa quẹo là bật liền, 0 độ trễ)
     private func processFreeRideTurnDetection(location: CLLocation) {
         let speed = locationManager.currentSpeedKmh
-        let course = locationManager.currentCourse
+        let course = locationManager.instantCourse
+        let now = Date()
         
-        // 1. Nếu xe đứng yên hoặc đi quá chậm (< minSpeedKmh): bỏ qua để tránh trôi GPS
+        // 1. Nếu xe đứng yên hoàn toàn (< minSpeedKmh, mặc định 3 km/h): giữ nguyên trạng thái
         guard speed >= settings.minSpeedKmh else {
-            // Khi dừng đèn đỏ, giữ nguyên trạng thái mốc
             return
         }
         
-        // 2. Khởi tạo mốc hướng đi thẳng đầu tiên khi xe bắt đầu lăn bánh
+        // Lưu mẫu hướng vào lịch sử (chỉ giữ 8 giây gần nhất)
+        courseHistory.append(CourseSample(timestamp: now, course: course))
+        courseHistory.removeAll { now.timeIntervalSince($0.timestamp) > 8.0 }
+        
+        // 2. Khởi tạo mốc hướng đầu tiên khi xe vừa lăn bánh
         if !hasEstablishedBaseline {
             baselineHeading = course
             lastRecordedCourse = course
             hasEstablishedBaseline = true
-            straightCourseCount = 0
-            alertBannerText = "🛡️ Đang giám sát chuyển hướng tự động..."
+            alertBannerText = "🛡️ Đang giám sát ngã rẽ tức thì..."
             return
         }
         
-        // 3. Tính góc lệch tức thời giữa hướng di chuyển hiện tại và hướng thẳng mốc ban đầu
-        let delta = normalizeAngle(course - baselineHeading)
-        self.currentTurnAngleDelta = delta
-        
-        // 4. KHI CHƯA BẬT XI NHAN (ĐANG ĐI THẲNG TRÊN ĐƯỜNG):
+        // 3. KHI CHƯA BẬT XI NHAN (ĐANG ĐI THẲNG):
         if turnController.currentState == .off {
-            // Nếu xe vẫn đi thẳng (góc lệch nhỏ < 7 độ): Cập nhật mốc hướng đường mới dần dần
-            if abs(delta) < 7.0 {
-                straightCourseCount += 1
-                if straightCourseCount >= 3 {
-                    // Xe đang chạy thẳng ổn định trên một đoạn phố
-                    baselineHeading = normalize360(baselineHeading * 0.7 + course * 0.3)
-                    straightCourseCount = 0
-                    alertBannerText = "🚗 Đang chạy thẳng (\(Int(speed)) km/h) - Sẵn sàng tự bật xi nhan"
-                }
+            // Lấy các mẫu hướng cách đây từ 1.5 giây đến 5.0 giây (lúc xe chưa vào cua)
+            // KHÔNG kéo baseline chạy theo góc cua nhẹ, nhờ vậy vừa bẻ lái 14° là phát hiện ngay trong 0.3s!
+            let pastSamples = courseHistory.filter {
+                let age = now.timeIntervalSince($0.timestamp)
+                return age >= 1.5 && age <= 5.0
             }
-            // PHÁT HIỆN BẮT ĐẦU RẼ PHẢI:
-            else if delta >= settings.turnSensitivityDegrees { // Mặc định >= 20 độ sang phải
-                turnStartHeading = baselineHeading
+            
+            let referenceHeading: Double
+            if !pastSamples.isEmpty {
+                referenceHeading = circularMean(angles: pastSamples.map { $0.course })
+            } else if let oldest = courseHistory.first {
+                referenceHeading = oldest.course
+            } else {
+                referenceHeading = baselineHeading
+            }
+            
+            baselineHeading = referenceHeading
+            let delta = normalizeAngle(course - referenceHeading)
+            self.currentTurnAngleDelta = delta
+            
+            // PHÁT HIỆN BẮT ĐẦU RẼ PHẢI NGAY LẬP TỨC:
+            if delta >= settings.turnSensitivityDegrees {
+                turnStartHeading = referenceHeading
+                turnStartTime = now
                 turnCompletionSteadyCount = 0
                 detectedTurnState = .right
-                alertBannerText = "🚨 ĐANG RẼ PHẢI - ĐÃ TỰ BẬT XI NHAN PHẢI!"
-                print(">>> TỰ ĐỘNG PHÁT HIỆN RẼ PHẢI (Delta: +\(Int(delta))°)")
+                alertBannerText = "🚨 ĐANG RẼ PHẢI - ĐÃ BẬT XI NHAN PHẢI!"
+                print(">>> TỰ ĐỘNG BẬT XI NHAN PHẢI TỨC THÌ (Delta: +\(Int(delta))°, Speed: \(Int(speed))km/h)")
                 turnController.triggerNavigationTurn(isLeft: false, distanceToJunction: 0)
             }
-            // PHÁT HIỆN BẮT ĐẦU RẼ TRÁI:
-            else if delta <= -settings.turnSensitivityDegrees { // Mặc định <= -20 độ sang trái
-                turnStartHeading = baselineHeading
+            // PHÁT HIỆN BẮT ĐẦU RẼ TRÁI NGAY LẬP TỨC:
+            else if delta <= -settings.turnSensitivityDegrees {
+                turnStartHeading = referenceHeading
+                turnStartTime = now
                 turnCompletionSteadyCount = 0
                 detectedTurnState = .left
-                alertBannerText = "🚨 ĐANG RẼ TRÁI - ĐÃ TỰ BẬT XI NHAN TRÁI!"
-                print(">>> TỰ ĐỘNG PHÁT HIỆN RẼ TRÁI (Delta: \(Int(delta))°)")
+                alertBannerText = "🚨 ĐANG RẼ TRÁI - ĐÃ BẬT XI NHAN TRÁI!"
+                print(">>> TỰ ĐỘNG BẬT XI NHAN TRÁI TỨC THÌ (Delta: \(Int(delta))°, Speed: \(Int(speed))km/h)")
                 turnController.triggerNavigationTurn(isLeft: true, distanceToJunction: 0)
             }
+            else {
+                alertBannerText = "🚗 Đang chạy thẳng (\(Int(speed)) km/h) - Nhạy bẻ lái: \(Int(settings.turnSensitivityDegrees))°"
+            }
         }
-        // 5. KHI ĐANG BẬT XI NHAN (XE ĐANG TRONG KHÚC RẼ):
+        // 4. KHI ĐANG BẬT XI NHAN (XE ĐANG TRONG KHÚC RẼ):
         else {
             let totalTurned = abs(normalizeAngle(course - turnStartHeading))
             let courseJitter = abs(normalizeAngle(course - lastRecordedCourse))
+            let elapsedSinceTurn = now.timeIntervalSince(turnStartTime)
             
-            // Nếu xe đã rẽ một góc đáng kể (>= 40 độ) và đầu xe đã thẳng hàng trên đường mới (courseJitter < 6 độ)
-            if totalTurned >= 40.0 && courseJitter < 6.0 {
+            // Đợi qua ít nhất 6 giây để xe đi hết giao lộ mới xét tự tắt khi chạy thẳng (hoặc hết 180s delay tự tắt)
+            if elapsedSinceTurn >= 6.0 && totalTurned >= 38.0 && courseJitter < 5.0 {
                 turnCompletionSteadyCount += 1
-                // Nếu hướng xe ổn định 3 lần cập nhật liên tiếp trên đường mới -> TẮT XI NHAN!
-                if turnCompletionSteadyCount >= 3 {
-                    print("<<< XE ĐÃ HOÀN THÀNH RẼ VÀ ĐI THẲNG TRÊN ĐƯỜNG MỚI -> TỰ TẮT XI NHAN")
+                if turnCompletionSteadyCount >= 4 {
+                    print("<<< XE ĐÃ HOÀN THÀNH RẼ VÀ ĐI THẲNG -> TỰ TẮT XI NHAN")
                     turnController.turnOff()
+                    courseHistory.removeAll()
                     baselineHeading = course
                     detectedTurnState = .off
-                    alertBannerText = "✅ ĐÃ QUA NGÃ RẼ - ĐÃ TẮT XI NHAN"
+                    alertBannerText = "✅ ĐÃ QUA NGÃ RẼ - SẴN SÀNG LƯỢT MỚI"
                     turnCompletionSteadyCount = 0
                 }
+            } else {
+                turnCompletionSteadyCount = 0
             }
         }
         
         lastRecordedCourse = course
+    }
+    
+    /// Tính trung bình góc vòng tròn 360° chính xác
+    private func circularMean(angles: [Double]) -> Double {
+        guard !angles.isEmpty else { return 0.0 }
+        var sinSum: Double = 0
+        var cosSum: Double = 0
+        for a in angles {
+            let rad = a * .pi / 180.0
+            sinSum += sin(rad)
+            cosSum += cos(rad)
+        }
+        var avg = atan2(sinSum, cosSum) * 180.0 / .pi
+        if avg < 0 { avg += 360.0 }
+        return avg
     }
     
     // MARK: - Thuật toán theo Lộ trình có sẵn (Khi người dùng chọn Tuyến đường)

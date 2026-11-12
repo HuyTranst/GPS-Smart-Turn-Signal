@@ -110,7 +110,7 @@ public struct TrafficCameraListView: View {
                         let dist = Int(userLoc.distance(from: camLoc))
                         Text("Cách: \(dist)m")
                             .font(.caption)
-                            .foregroundColor(dist <= 500 ? .red : .gray)
+                            .foregroundColor(dist <= Int(AppSettings.shared.cameraWarningDistanceMeters) ? .red : .gray)
                     }
                     
                     if let speed = cam.speedLimitKmh {
