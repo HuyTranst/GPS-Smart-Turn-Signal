@@ -24,7 +24,7 @@ public struct TrafficCamera: Identifiable, Codable, Equatable {
     public init(id: String = UUID().uuidString,
                 latitude: Double,
                 longitude: Double,
-                title: String = "Camera giao thông",
+                title: String = "No name",
                 speedLimitKmh: Int? = nil,
                 sourceType: CameraSourceType = .localUser,
                 createdAt: Date = Date()) {
@@ -39,5 +39,10 @@ public struct TrafficCamera: Identifiable, Codable, Equatable {
     
     public static func == (lhs: TrafficCamera, rhs: TrafficCamera) -> Bool {
         return lhs.id == rhs.id
+            && lhs.latitude == rhs.latitude
+            && lhs.longitude == rhs.longitude
+            && lhs.title == rhs.title
+            && lhs.speedLimitKmh == rhs.speedLimitKmh
+            && lhs.sourceType == rhs.sourceType
     }
 }

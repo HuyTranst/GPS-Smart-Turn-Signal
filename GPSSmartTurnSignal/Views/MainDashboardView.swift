@@ -15,6 +15,7 @@ public struct MainDashboardView: View {
     @State private var showingOfflineMaps = false
     @State private var showingRoutePlanner = false
     @State private var showingCameraList = false
+    @State private var quickCameraEditorMode: CameraEditorMode? = nil
     
     public init() {}
     
@@ -28,21 +29,41 @@ public struct MainDashboardView: View {
             VStack(spacing: 10) {
                 // Header phía trên: Đồng hồ tốc độ lớn, GPS và Trạng thái ESP32
                 topStatusBar
+                    .sheet(item: $quickCameraEditorMode) { mode in
+                        CameraEditorSheet(mode: mode)
+                    }
                 
                 // Banner Cảnh Báo Camera Giao Thông hoặc Ngã Rẽ Thời Gian Thực
                 statusAlertBanner
                 
-                // Toast thông báo hành động (nếu có)
+                // Toast thông báo hành động (kèm nút Sửa tên nhanh ngay sau khi ghim)
                 if let msg = cameraManager.lastActionMessage {
-                    Text(msg)
-                        .font(.system(size: 13, weight: .bold))
-                        .foregroundColor(.white)
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 8)
-                        .background(Color.black.opacity(0.85))
-                        .cornerRadius(20)
-                        .overlay(RoundedRectangle(cornerRadius: 20).stroke(Color.yellow.opacity(0.8), lineWidth: 1.5))
-                        .transition(.move(edge: .top).combined(with: .opacity))
+                    HStack(spacing: 8) {
+                        Text(msg)
+                            .font(.system(size: 13, weight: .bold))
+                            .foregroundColor(.white)
+                            .lineLimit(2)
+                        
+                        if let pinned = cameraManager.lastPinnedCamera {
+                            Button(action: {
+                                quickCameraEditorMode = .edit(camera: pinned)
+                            }) {
+                                Text("Sửa tên")
+                                    .font(.system(size: 11, weight: .heavy))
+                                    .foregroundColor(.black)
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 4)
+                                    .background(Color.yellow)
+                                    .cornerRadius(12)
+                            }
+                        }
+                    }
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 8)
+                    .background(Color.black.opacity(0.88))
+                    .cornerRadius(20)
+                    .overlay(RoundedRectangle(cornerRadius: 20).stroke(Color.yellow.opacity(0.8), lineWidth: 1.5))
+                    .transition(.move(edge: .top).combined(with: .opacity))
                 }
                 
                 Spacer()
@@ -51,7 +72,7 @@ public struct MainDashboardView: View {
                 HStack {
                     Spacer()
                     VStack(spacing: 12) {
-                        // NÚT ĐỊNH VỊ & GHI NHỚ CAMERA GIAO THÔNG (1 chạm tức thì)
+                        // NÚT ĐỊNH VỊ & GHI NHỚ CAMERA GIAO THÔNG (1 chạm tức thì + tự dò tên đường)
                         Button(action: {
                             cameraManager.saveCameraAtCurrentLocation()
                         }) {
@@ -71,18 +92,25 @@ public struct MainDashboardView: View {
                             .shadow(color: .orange.opacity(0.6), radius: 6, x: 0, y: 3)
                         }
                         
-                        // Nút Recenter đưa camera về tâm xe
+                        // Nút Recenter đưa bản đồ về tâm xe (nổi bật khi đang xem vị trí camera)
                         Button(action: {
-                            NotificationCenter.default.post(name: NSNotification.Name("RecenterMapOnUser"), object: nil)
+                            cameraManager.returnToUserTracking()
                         }) {
-                            Image(systemName: "location.fill")
-                                .font(.system(size: 16, weight: .bold))
-                                .foregroundColor(.white)
-                                .frame(width: 44, height: 44)
-                                .background(Color.black.opacity(0.85))
-                                .clipShape(Circle())
-                                .overlay(Circle().stroke(Color.white.opacity(0.3), lineWidth: 1))
-                                .shadow(radius: 4)
+                            VStack(spacing: 2) {
+                                Image(systemName: "location.fill")
+                                    .font(.system(size: 16, weight: .bold))
+                                if cameraManager.isInspectingCameraLocation {
+                                    Text("Về xe")
+                                        .font(.system(size: 8, weight: .black))
+                                }
+                            }
+                            .foregroundColor(.white)
+                            .frame(width: cameraManager.isInspectingCameraLocation ? 52 : 44,
+                                   height: cameraManager.isInspectingCameraLocation ? 52 : 44)
+                            .background(cameraManager.isInspectingCameraLocation ? Color.blue : Color.black.opacity(0.85))
+                            .clipShape(Circle())
+                            .overlay(Circle().stroke(Color.white.opacity(cameraManager.isInspectingCameraLocation ? 0.9 : 0.3), lineWidth: cameraManager.isInspectingCameraLocation ? 2 : 1))
+                            .shadow(radius: 4)
                         }
                     }
                 }

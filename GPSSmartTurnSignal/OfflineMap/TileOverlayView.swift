@@ -263,17 +263,26 @@ public struct OfflineMapView: UIViewRepresentable {
         private var lastZoomDistance: Double = 0.0
         private var lastZoomTime: Date = Date.distantPast
         private var hasInitialZoomed: Bool = false
+        private var isFollowingUser: Bool = true
+        private var observers: [NSObjectProtocol] = []
         
         init(_ parent: OfflineMapView) {
             self.parent = parent
             super.init()
             
-            NotificationCenter.default.addObserver(
+            let recenterObs = NotificationCenter.default.addObserver(
                 forName: NSNotification.Name("RecenterMapOnUser"),
                 object: nil,
                 queue: .main
             ) { [weak self] _ in
-                guard let self = self, let mv = self.mapView, let loc = LocationManager.shared.currentLocation else { return }
+                guard let self = self else { return }
+                self.isFollowingUser = true
+                TrafficCameraManager.shared.isInspectingCameraLocation = false
+                
+                guard let mv = self.mapView else { return }
+                mv.selectedAnnotations.forEach { mv.deselectAnnotation($0, animated: true) }
+                
+                guard let loc = LocationManager.shared.currentLocation else { return }
                 let targetDist = self.calculateTargetDistance(speedKmh: LocationManager.shared.currentSpeedKmh)
                 self.lastZoomDistance = targetDist
                 self.lastZoomTime = Date()
@@ -285,10 +294,46 @@ public struct OfflineMapView: UIViewRepresentable {
                 )
                 mv.setCamera(cam, animated: true)
             }
+            
+            let focusCamObs = NotificationCenter.default.addObserver(
+                forName: NSNotification.Name("FocusMapOnCamera"),
+                object: nil,
+                queue: .main
+            ) { [weak self] notification in
+                guard let self = self,
+                      let targetCam = notification.object as? TrafficCamera,
+                      let mv = self.mapView else { return }
+                
+                self.isFollowingUser = false
+                TrafficCameraManager.shared.isInspectingCameraLocation = true
+                
+                let mapCamera = MKMapCamera(
+                    lookingAtCenter: targetCam.coordinate,
+                    fromDistance: 450.0,
+                    pitch: 0,
+                    heading: 0
+                )
+                mv.setCamera(mapCamera, animated: true)
+                
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { [weak self, weak mv] in
+                    guard let self = self, let mv = mv else { return }
+                    if let ann = self.cameraAnnotations.first(where: { $0.camera.id == targetCam.id }) {
+                        mv.selectAnnotation(ann, animated: true)
+                    }
+                }
+            }
+            
+            observers = [recenterObs, focusCamObs]
+        }
+        
+        deinit {
+            for observer in observers {
+                NotificationCenter.default.removeObserver(observer)
+            }
         }
         
         public func handleSmartAutoZoom(location: CLLocation, speedKmh: Double, course: Double) {
-            guard let mapView = mapView else { return }
+            guard isFollowingUser, let mapView = mapView else { return }
             
             let now = Date()
             
@@ -416,11 +461,17 @@ public struct OfflineMapView: UIViewRepresentable {
             return view
         }
         
-        /// Cập nhật các điểm Camera trên bản đồ
+        /// Cập nhật các điểm Camera trên bản đồ (kể cả khi tên đường hoặc tốc độ vừa được cập nhật)
         func updateCameras(cameras: [TrafficCamera], on mapView: MKMapView) {
-            let existingIds = Set(cameraAnnotations.map { $0.camera.id })
-            let newIds = Set(cameras.map { $0.id })
-            if existingIds == newIds { return }
+            let existingSignature = cameraAnnotations.map {
+                "\($0.camera.id)|\($0.camera.title)|\($0.camera.speedLimitKmh ?? -1)"
+            }
+            let newSignature = cameras.map {
+                "\($0.id)|\($0.title)|\($0.speedLimitKmh ?? -1)"
+            }
+            if existingSignature == newSignature { return }
+            
+            let selectedCameraId = (mapView.selectedAnnotations.first as? TrafficCameraAnnotation)?.camera.id
             
             mapView.removeAnnotations(cameraAnnotations)
             cameraAnnotations.removeAll()
@@ -429,6 +480,9 @@ public struct OfflineMapView: UIViewRepresentable {
                 let ann = TrafficCameraAnnotation(camera: cam)
                 cameraAnnotations.append(ann)
                 mapView.addAnnotation(ann)
+                if cam.id == selectedCameraId {
+                    mapView.selectAnnotation(ann, animated: false)
+                }
             }
         }
         
