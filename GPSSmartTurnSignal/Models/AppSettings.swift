@@ -22,6 +22,9 @@ public final class AppSettings: ObservableObject {
         static let isHapticFeedbackEnabled = "gps_signal_isHapticFeedbackEnabled"
         static let isCameraWarningEnabled = "gps_signal_isCameraWarningEnabled"
         static let cameraWarningDistanceMeters = "gps_signal_cameraWarningDistanceMeters"
+        static let isCameraRepeatingVibrationEnabled = "gps_signal_isCameraRepeatingVibrationEnabled"
+        static let cameraVibrationPulses = "gps_signal_cameraVibrationPulses"
+        static let cameraVibrationPauseSeconds = "gps_signal_cameraVibrationPauseSeconds"
         static let hasAppliedV108Migration = "gps_signal_migrated_v108"
     }
     
@@ -147,6 +150,30 @@ public final class AppSettings: ObservableObject {
         }
     }
     
+    /// Bật/Tắt chế độ rung chu kỳ cảnh báo Camera (Rung 5 lần, nghỉ 3 giây cho đến khi ra khỏi vùng)
+    @Published public var isCameraRepeatingVibrationEnabled: Bool {
+        didSet {
+            UserDefaults.standard.set(isCameraRepeatingVibrationEnabled, forKey: Keys.isCameraRepeatingVibrationEnabled)
+            UserDefaults.standard.synchronize()
+        }
+    }
+    
+    /// Số lần rung trong mỗi đợt cảnh báo camera (Mặc định 5 lần, dải 1 - 10)
+    @Published public var cameraVibrationPulses: Int {
+        didSet {
+            UserDefaults.standard.set(cameraVibrationPulses, forKey: Keys.cameraVibrationPulses)
+            UserDefaults.standard.synchronize()
+        }
+    }
+    
+    /// Thời gian tạm nghỉ giữa các đợt rung camera (Mặc định 3.0 giây, dải 1s - 8s)
+    @Published public var cameraVibrationPauseSeconds: Double {
+        didSet {
+            UserDefaults.standard.set(cameraVibrationPauseSeconds, forKey: Keys.cameraVibrationPauseSeconds)
+            UserDefaults.standard.synchronize()
+        }
+    }
+    
     // MARK: - Init
     private init() {
         let defaults = UserDefaults.standard
@@ -206,6 +233,15 @@ public final class AppSettings: ObservableObject {
             
         self.isHapticFeedbackEnabled = defaults.object(forKey: Keys.isHapticFeedbackEnabled) != nil ?
             defaults.bool(forKey: Keys.isHapticFeedbackEnabled) : true
+            
+        self.isCameraRepeatingVibrationEnabled = defaults.object(forKey: Keys.isCameraRepeatingVibrationEnabled) != nil ?
+            defaults.bool(forKey: Keys.isCameraRepeatingVibrationEnabled) : true
+            
+        self.cameraVibrationPulses = defaults.object(forKey: Keys.cameraVibrationPulses) != nil ?
+            defaults.integer(forKey: Keys.cameraVibrationPulses) : 5
+            
+        self.cameraVibrationPauseSeconds = defaults.object(forKey: Keys.cameraVibrationPauseSeconds) != nil ?
+            defaults.double(forKey: Keys.cameraVibrationPauseSeconds) : 3.0
     }
     
     /// Đặt lại toàn bộ cấu hình về mặc định chuẩn
@@ -224,5 +260,8 @@ public final class AppSettings: ObservableObject {
         cameraWarningDistanceMeters = 150.0
         isSoundAlertEnabled = true
         isHapticFeedbackEnabled = true
+        isCameraRepeatingVibrationEnabled = true
+        cameraVibrationPulses = 5
+        cameraVibrationPauseSeconds = 3.0
     }
 }

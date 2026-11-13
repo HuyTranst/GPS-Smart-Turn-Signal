@@ -73,6 +73,9 @@ public final class NavigationEngine: ObservableObject {
     // MARK: - Xử Lý GPS Thời Gian Thực
     
     private func processLocationUpdate(_ location: CLLocation) {
+        // Luôn kiểm tra watchdog timeout trên mỗi bản tin GPS để chống tình trạng treo xi nhan
+        turnController.enforceWatchdogTimeout()
+        
         guard settings.isAutoSignalEnabled else { return }
         
         // NẾU CÓ TUYẾN ĐƯỜNG CỐ ĐỊNH -> CHẠY THUẬT TOÁN ĐIỂM GIAO LỘ
@@ -162,8 +165,60 @@ public final class NavigationEngine: ObservableObject {
         // 4. KHI ĐANG BẬT XI NHAN (XE ĐANG TRONG KHÚC RẼ HOẶC VỪA LẮC LÁI/NGHIÊNG NHẸ):
         else {
             let elapsedSinceTurn = now.timeIntervalSince(turnStartTime)
-            let currentDeviationFromStart = abs(normalizeAngle(course - turnStartHeading))
+            
+            // =========================================================================
+            // 0. CHỐNG TREO XI NHAN: HẾT THỜI GIAN CÀI ĐẶT -> CƯỠNG CHẾ TẮT NGAY LẬP TỨC
+            // =========================================================================
+            if elapsedSinceTurn >= settings.turnDurationSeconds {
+                print("<<< WATCHDOG CƯỠNG CHẾ TẮT: Đã đủ \(Int(elapsedSinceTurn))s >= \(Int(settings.turnDurationSeconds))s!")
+                turnController.turnOff(speak: true)
+                courseHistory.removeAll()
+                baselineHeading = course
+                detectedTurnState = .off
+                alertBannerText = "⏰ ĐÃ HẾT THỜI GIAN XI NHAN - ĐÃ TỰ TẮT"
+                turnCompletionSteadyCount = 0
+                falseTurnSteadyCount = 0
+                maxTurnDeviationReached = 0.0
+                lastRecordedCourse = course
+                return
+            }
+            
+            let signedDeviationFromStart = normalizeAngle(course - turnStartHeading)
+            let currentDeviationFromStart = abs(signedDeviationFromStart)
             let courseJitter = abs(normalizeAngle(course - lastRecordedCourse))
+            
+            // =========================================================================
+            // A. ĐỔI HƯỚNG TỨC THÌ TẠI VÒNG XOAY / BÙNG BINH (TURN REVERSAL)
+            // =========================================================================
+            // TH1: Đang xi nhan PHẢI mà ngoặt gấp sang TRÁI (Vào vòng xuyến hoặc cua chữ S)
+            if turnController.currentState == .right && signedDeviationFromStart <= -settings.turnSensitivityDegrees {
+                print("🔄 VÒNG XOAY: ĐANG XI NHAN PHẢI -> NGOẶT TRÁI (Delta: \(Int(signedDeviationFromStart))°) -> ĐỔI SANG XI NHAN TRÁI NGAY!")
+                turnController.switchTurnDirection(to: .left)
+                turnStartHeading = course
+                turnStartTime = now
+                maxTurnDeviationReached = abs(signedDeviationFromStart)
+                turnCompletionSteadyCount = 0
+                falseTurnSteadyCount = 0
+                detectedTurnState = .left
+                alertBannerText = "🔄 VÒNG XOAY: ĐÃ ĐỔI SANG XI NHAN TRÁI!"
+                lastRecordedCourse = course
+                return
+            }
+            
+            // TH2: Đang xi nhan TRÁI mà ngoặt gấp sang PHẢI (Thoát vòng xuyến hoặc cua ngược)
+            if turnController.currentState == .left && signedDeviationFromStart >= settings.turnSensitivityDegrees {
+                print("🔄 VÒNG XOAY: ĐANG XI NHAN TRÁI -> NGOẶT PHẢI (Delta: +\(Int(signedDeviationFromStart))°) -> ĐỔI SANG XI NHAN PHẢI NGAY!")
+                turnController.switchTurnDirection(to: .right)
+                turnStartHeading = course
+                turnStartTime = now
+                maxTurnDeviationReached = abs(signedDeviationFromStart)
+                turnCompletionSteadyCount = 0
+                falseTurnSteadyCount = 0
+                detectedTurnState = .right
+                alertBannerText = "🔄 VÒNG XOAY: ĐÃ ĐỔI SANG XI NHAN PHẢI!"
+                lastRecordedCourse = course
+                return
+            }
             
             // Cập nhật góc lệch lớn nhất đạt được kể từ khi bắt đầu bật xi nhan
             if currentDeviationFromStart > maxTurnDeviationReached {

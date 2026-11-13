@@ -2,6 +2,7 @@ import Foundation
 import CoreLocation
 import Combine
 import AVFoundation
+import AudioToolbox
 import UIKit
 
 /// Quản lý phát hiện và cảnh báo Camera giao thông (Mặc định 150m) & Ghi nhớ vị trí thủ công
@@ -275,6 +276,7 @@ public final class TrafficCameraManager: ObservableObject {
         guard AppSettings.shared.isCameraWarningEnabled else {
             if isCameraWarningActive {
                 isCameraWarningActive = false
+                stopRepeatingCameraHaptics()
                 activeWarningCamera = nil
                 warningDistanceMeters = 0
                 HardwareService.shared.sendCommand(.cameraWarningOff)
@@ -322,17 +324,15 @@ public final class TrafficCameraManager: ObservableObject {
                     speak(alertSpeech)
                 }
                 
-                // Phản hồi rung cảnh báo
-                if AppSettings.shared.isHapticFeedbackEnabled {
-                    let feedback = UINotificationFeedbackGenerator()
-                    feedback.notificationOccurred(.warning)
-                }
+                // 3. BẮT ĐẦU CHU KỲ RUNG 5 LẦN, NGHỈ 3S LẶP LẠI LIÊN TỤC CHO ĐẾN KHI RA KHỎI VÙNG
+                startRepeatingCameraHaptics()
             }
         } else {
             // Khi xe đã ra khỏi vùng cảnh báo
             if isCameraWarningActive && minDistance > (threshold + 40.0) {
-                print("Đã ra khỏi vùng camera -> TẮT ĐÈN SỐ 3 TRÊN ESP32")
+                print("Đã ra khỏi vùng camera -> TẮT ĐÈN SỐ 3 TRÊN ESP32 & DỪNG RUNG")
                 isCameraWarningActive = false
+                stopRepeatingCameraHaptics()
                 activeWarningCamera = nil
                 warningDistanceMeters = 0
                 
@@ -345,6 +345,60 @@ public final class TrafficCameraManager: ObservableObject {
                 }
             }
         }
+    }
+    
+    // MARK: - Quản Lý Rung Chu Kỳ Cảnh Báo Camera (Rung 5 lần, nghỉ 3 giây)
+    
+    private var cameraVibrationTimer: Timer?
+    private var cameraVibrationWorkItems: [DispatchWorkItem] = []
+    
+    private func startRepeatingCameraHaptics() {
+        stopRepeatingCameraHaptics()
+        guard AppSettings.shared.isHapticFeedbackEnabled,
+              AppSettings.shared.isCameraRepeatingVibrationEnabled else { return }
+        
+        // Phát ngay đợt rung đầu tiên
+        executeCameraVibrationBurst()
+        
+        // Tính tổng chu kỳ lặp = (số nhịp - 1) * 0.22s + thời gian nghỉ cài đặt (mặc định 3.0s)
+        let pulses = max(1, AppSettings.shared.cameraVibrationPulses)
+        let burstDuration = Double(pulses - 1) * 0.22
+        let cycleDuration = burstDuration + max(1.0, AppSettings.shared.cameraVibrationPauseSeconds)
+        
+        let timer = Timer(timeInterval: cycleDuration, repeats: true) { [weak self] _ in
+            guard let self = self, self.isCameraWarningActive else {
+                self?.stopRepeatingCameraHaptics()
+                return
+            }
+            self.executeCameraVibrationBurst()
+        }
+        RunLoop.main.add(timer, forMode: .common)
+        self.cameraVibrationTimer = timer
+    }
+    
+    private func executeCameraVibrationBurst() {
+        guard isCameraWarningActive else { return }
+        let pulses = max(1, AppSettings.shared.cameraVibrationPulses)
+        
+        for i in 0..<pulses {
+            let delay = Double(i) * 0.22
+            let workItem = DispatchWorkItem { [weak self] in
+                guard let self = self, self.isCameraWarningActive else { return }
+                AudioServicesPlaySystemSound(kSystemSoundID_Vibrate)
+                let generator = UIImpactFeedbackGenerator(style: .heavy)
+                generator.impactOccurred()
+            }
+            cameraVibrationWorkItems.append(workItem)
+            DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: workItem)
+        }
+    }
+    
+    private func stopRepeatingCameraHaptics() {
+        cameraVibrationTimer?.invalidate()
+        cameraVibrationTimer = nil
+        cameraVibrationWorkItems.forEach { $0.cancel() }
+        cameraVibrationWorkItems.removeAll()
+    }
     }
     
     // MARK: - Phát Giọng Nói Cảnh Báo

@@ -14,6 +14,7 @@ public final class TurnSignalController: ObservableObject {
     @Published public var lastTriggerTime: Date = Date.distantPast
     @Published public var isBlinkingActive: Bool = false
     
+    private var turnDeadline: Date?
     private var autoOffTimer: Timer?
     private var blinkTimer: Timer?
     private let hardwareService = HardwareService.shared
@@ -57,19 +58,66 @@ public final class TurnSignalController: ObservableObject {
         }
     }
     
-    /// Tắt toàn bộ xi nhan
+    /// Đổi chiều xi nhan khẩn cấp tức thì (bỏ qua cooldown, xử lý dead-time an toàn) - Dành riêng cho Vòng xoay / Bùng binh
+    public func switchTurnDirection(to target: TurnSignalState) {
+        guard target != .off else {
+            turnOff()
+            return
+        }
+        
+        // Ngắt relay chiều cũ trước và trễ 40ms để tránh xung đột relay
+        if currentState != .off && currentState != target {
+            hardwareService.sendCommand(.turnOff)
+            usleep(40_000)
+        }
+        
+        currentState = target
+        lastTriggerTime = Date()
+        let duration = Int(settings.turnDurationSeconds)
+        self.turnDeadline = Date().addingTimeInterval(Double(duration))
+        self.remainingSeconds = duration
+        self.isBlinkingActive = true
+        
+        // Gửi lệnh hướng mới tới ESP32
+        let cmd: TurnCommand = (target == .left) ? .turnLeft : .turnRight
+        hardwareService.sendCommand(cmd)
+        
+        // Phát âm thanh cảnh báo & giọng nói
+        playAlertFeedback(for: target)
+        
+        // Chạy lại bộ đếm thời gian
+        startCountdownTimer(duration: duration)
+    }
+    
+    /// Watchdog độc lập cưỡng chế tắt xi nhan nếu quá thời gian cài đặt (chống tình trạng xi nhan treo hoài không tắt)
+    public func enforceWatchdogTimeout() {
+        guard currentState != .off else { return }
+        let elapsed = Date().timeIntervalSince(lastTriggerTime)
+        if elapsed >= settings.turnDurationSeconds {
+            print("<<< WATCHDOG CƯỠNG CHẾ TẮT: Đã trôi qua \(Int(elapsed))s >= \(Int(settings.turnDurationSeconds))s! TỰ ĐỘNG TẮT.")
+            turnOff(speak: true)
+        }
+    }
+    
+    /// Tắt toàn bộ xi nhan (Gửi lệnh kép chống rớt gói)
     public func turnOff(speak: Bool = true) {
         autoOffTimer?.invalidate()
         autoOffTimer = nil
         blinkTimer?.invalidate()
         blinkTimer = nil
+        turnDeadline = nil
         
         currentState = .off
         remainingSeconds = 0
         isBlinkingActive = false
         
-        // Gửi lệnh TURN_OFF tới ESP32
+        // Gửi lệnh TURN_OFF tới ESP32 lần 1
         hardwareService.sendCommand(.turnOff)
+        
+        // Gửi nhắc lại lệnh TURN_OFF lần 2 sau 60ms để chắc chắn ESP32 nhận được qua BLE/WiFi
+        DispatchQueue.global(qos: .userInitiated).asyncAfter(deadline: .now() + 0.06) { [weak self] in
+            self?.hardwareService.sendCommand(.turnOff)
+        }
         
         if speak {
             speakVoice("Xi nhan đã tắt")
@@ -99,6 +147,7 @@ public final class TurnSignalController: ObservableObject {
         currentState = target
         lastTriggerTime = Date()
         let duration = Int(settings.turnDurationSeconds)
+        turnDeadline = Date().addingTimeInterval(Double(duration))
         remainingSeconds = duration
         isBlinkingActive = true
         
@@ -115,16 +164,23 @@ public final class TurnSignalController: ObservableObject {
     
     private func startCountdownTimer(duration: Int) {
         autoOffTimer?.invalidate()
-        remainingSeconds = duration
+        let deadline = Date().addingTimeInterval(Double(duration))
+        self.turnDeadline = deadline
+        self.remainingSeconds = duration
         
-        autoOffTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] timer in
+        // Chạy timer trên .common mode để không bị pause khi tương tác màn hình
+        let timer = Timer(timeInterval: 1.0, repeats: true) { [weak self] _ in
             guard let self = self else { return }
-            if self.remainingSeconds > 1 {
-                self.remainingSeconds -= 1
+            let remaining = Int(ceil(deadline.timeIntervalSinceNow))
+            if remaining > 0 {
+                self.remainingSeconds = remaining
             } else {
-                self.turnOff()
+                print("<<< WATCHDOG TIMER ĐÃ HẾT HẠN (\(duration)s) -> TẮT XI NHAN")
+                self.turnOff(speak: true)
             }
         }
+        RunLoop.main.add(timer, forMode: .common)
+        self.autoOffTimer = timer
     }
     
     private func playAlertFeedback(for state: TurnSignalState) {

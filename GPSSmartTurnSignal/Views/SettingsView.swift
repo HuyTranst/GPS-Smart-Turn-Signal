@@ -29,7 +29,7 @@ public struct SettingsView: View {
                     }
                 }
                 
-                // Section 2: Cảnh báo Camera Giao Thông (Mới - Mặc định 150m)
+                // Section 2: Cảnh báo Camera Giao Thông (Mặc định 150m)
                 Section(header: HStack(spacing: 6) {
                     CCTVCameraIconView(size: 14, color: .orange)
                     Text("CẢNH BÁO CAMERA GIAO THÔNG (ĐÈN SỐ 3)")
@@ -56,6 +56,43 @@ public struct SettingsView: View {
                         Text("Mặc định: 150 mét. Khi xe cách camera trong cự ly này sẽ phát cảnh báo và bật đèn số 3.")
                             .font(.caption2)
                             .foregroundColor(.secondary)
+                    }
+                    
+                    // Cấu hình rung chu kỳ khi trong tầm camera (Mặc định: rung 5 lần, nghỉ 3 giây)
+                    Toggle(isOn: $settings.isCameraRepeatingVibrationEnabled) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Rung lặp lại khi trong vùng camera")
+                                .font(.body.bold())
+                            Text("Rung 5 lần dồn dập rồi nghỉ 3 giây, lặp lại cho đến khi ra khỏi vùng")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                    
+                    if settings.isCameraRepeatingVibrationEnabled {
+                        Stepper(value: $settings.cameraVibrationPulses, in: 1...10) {
+                            HStack {
+                                Text("Số nhịp rung mỗi đợt")
+                                Spacer()
+                                Text("\(settings.cameraVibrationPulses) lần")
+                                    .bold()
+                                    .foregroundColor(.orange)
+                            }
+                        }
+                        
+                        VStack(alignment: .leading, spacing: 4) {
+                            HStack {
+                                Text("Thời gian nghỉ giữa các đợt rung")
+                                Spacer()
+                                Text(String(format: "%.1f giây", settings.cameraVibrationPauseSeconds))
+                                    .bold()
+                                    .foregroundColor(.orange)
+                            }
+                            Slider(value: $settings.cameraVibrationPauseSeconds, in: 1.0...8.0, step: 0.5)
+                            Text("Mặc định: 3.0 giây nghỉ giữa 2 đợt rung liên tiếp.")
+                                .font(.caption2)
+                                .foregroundColor(.secondary)
+                        }
                     }
                 }
                 
