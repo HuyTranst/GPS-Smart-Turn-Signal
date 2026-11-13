@@ -1,0 +1,21 @@
+﻿id,province,district,location_name,lat,lng,speed_limit,cam_type,violations,source
+CT-01,Cần Thơ,Ninh Kiều,Nút giao Cách Mạng Tháng 8 - Nguyễn Văn Cừ,10.0526,105.7725,50,Camera AI phạt nguội (Đèn đỏ & Sai làn),Vượt đèn đỏ; Đi sai làn đường; Dừng đỗ sai quy định; Quá tốc độ,Công an TP. Cần Thơ
+CT-02,Cần Thơ,Ninh Kiều,Nút giao Nguyễn Trãi - Cầu Ninh Kiều,10.0381,105.7876,50,Camera phạt nguội vượt đèn & ngược chiều,Vượt đèn đỏ; Đi ngược chiều; Dừng đỗ trái phép,Công an TP. Cần Thơ
+CT-03,Cần Thơ,Ninh Kiều,Nút giao Nguyễn Văn Cừ - Võ Văn Kiệt - Mậu Thân,10.0468,105.7663,50,Camera AI phạt nguội,Vượt đèn đỏ; Không chấp hành vạch kẻ đường,Công an TP. Cần Thơ
+CT-04,Cần Thơ,Ninh Kiều,Nút giao Trần Hưng Đạo - Mậu Thân - 3 Tháng 2,10.0327,105.7702,50,Camera giám sát tín hiệu đèn & chuyển làn,Vượt đèn đỏ; Đè vạch liền; Sai làn,Công an TP. Cần Thơ
+CT-05,Cần Thơ,Ninh Kiều,Nút giao Mậu Thân - 30 Tháng 4,10.0245,105.7735,50,Camera giám sát đèn tín hiệu,Vượt đèn đỏ; Dừng đè vạch đi bộ,Công an TP. Cần Thơ
+CT-06,Cần Thơ,Ninh Kiều,Nút giao Nguyễn Văn Linh - Nguyễn Văn Cừ,10.0229,105.7562,50,Camera AI giám sát nút giao,Vượt đèn đỏ; Quá tốc độ; Rẽ sai quy định,Công an TP. Cần Thơ
+CT-07,Cần Thơ,Ninh Kiều,Nút giao Nguyễn Văn Linh - 3 Tháng 2,10.0175,105.7651,50,Camera giám sát xe tải & phạt nguội,Vượt đèn đỏ; Xe tải đi vào giờ cấm; Sai làn,Công an TP. Cần Thơ
+CT-08,Cần Thơ,Ninh Kiều,Nút giao Nguyễn Văn Linh - 30 Tháng 4,10.0134,105.7728,50,Camera AI phạt nguội,Vượt đèn đỏ; Lấn làn đường,Công an TP. Cần Thơ
+CT-09,Cần Thơ,Cái Răng,Cụm Nút giao IC3-1 (Võ Nguyên Giáp - Quang Trung),10.0183,105.7947,60,Camera đo tốc độ & phạt nguội cửa ngõ,Quá tốc độ; Sai làn đường; Vượt đèn đỏ,Công an TP. Cần Thơ
+CT-10,Cần Thơ,Cái Răng,Cụm Nút giao IC3-2 (Võ Nguyên Giáp hướng cầu Cần Thơ),10.0162,105.7961,60,Camera đo tốc độ tự động,Chạy quá tốc độ quy định,Công an TP. Cần Thơ
+CT-11,Cần Thơ,Cái Răng,Nút giao IC4 (Quốc lộ 1A - Đường Hậu Giang),9.9922,105.7778,60,Camera giám sát tốc độ & tải trọng QL1A,Quá tốc độ; Vượt ẩu; Lấn làn ngược chiều,Công an TP. Cần Thơ
+CT-12,Cần Thơ,Ninh Kiều,Đầu Cầu Quang Trung (Đại lộ Hòa Bình - 30/4),10.022,105.786,50,Camera giám sát giao thông đô thị,Chạy quá tốc độ; Lấn làn đường,Công an TP. Cần Thơ
+ST-01,Sóc Trăng,TP. Sóc Trăng,Nút giao Lê Duẩn - Lê Hồng Phong,9.6015,105.9752,50,Camera giám sát đèn tín hiệu thông minh,Vượt đèn đỏ; Lấn làn; Không đội mũ bảo hiểm,Công an Tỉnh Sóc Trăng
+ST-02,Sóc Trăng,TP. Sóc Trăng,Đường Trần Hưng Đạo - Hùng Vương,9.6052,105.9721,50,Camera phạt nguội tốc độ & làn đường,Chạy quá tốc độ; Sai làn,Công an Tỉnh Sóc Trăng
+ST-03,Sóc Trăng,TP. Sóc Trăng,Nút giao Dương Kỳ Hiệp - Trần Hưng Đạo,9.608,105.9685,50,Camera phạt nguội vượt đèn tín hiệu,Vượt đèn đỏ; Không chấp hành hiệu lệnh biển báo,Công an Tỉnh Sóc Trăng
+ST-04,Sóc Trăng,TP. Sóc Trăng,Đường Lý Thường Kiệt (Gần khu vực chợ trung tâm),9.6041,105.9803,40,Camera giám sát dừng đỗ,Dừng đỗ xe trái quy định; Đi vào đường cấm,Công an Tỉnh Sóc Trăng
+ST-05,Sóc Trăng,TP. Sóc Trăng,Tuyến đường tránh Võ Văn Kiệt (QL1A cũ),9.615,105.952,60,Camera đo tốc độ tự động 24/7,Quá tốc độ quy định; Vượt nơi cấm vượt,Công an Tỉnh Sóc Trăng
+ST-06,Sóc Trăng,Mỹ Xuyên,Quốc lộ 1A - Đoạn Ngã 3 Trà Tim,9.585,105.985,60,Camera AI phạt nguội cửa ngõ phía Nam,Quá tốc độ; Vượt đèn đỏ; Xe quá khổ quá tải,Công an Tỉnh Sóc Trăng
+ST-07,Sóc Trăng,Châu Thành,Quốc lộ 1A - Cửa ngõ Châu Thành vào TP. Sóc Trăng,9.645,105.925,80,Camera giám sát tốc độ tự động,Quá tốc độ; Đi sai làn đường,Công an Tỉnh Sóc Trăng
+ST-08,Sóc Trăng,TP. Sóc Trăng,Ngã tư Quốc lộ 1A - Bến xe Sóc Trăng,9.6095,105.961,50,Camera giám sát trật tự giao thông,Vượt đèn đỏ; Đón trả khách sai quy định,Công an Tỉnh Sóc Trăng

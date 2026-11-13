@@ -422,14 +422,14 @@ public struct TrafficCameraListView: View {
                     }
                 }
                 
-                // Section 4: Dữ liệu Camera Offline (Cần Thơ & Toàn Quốc)
+                // Section 4: Dữ liệu Camera Offline (Cần Thơ, Sóc Trăng & Toàn Quốc)
                 Section(
                     header: Text("Dữ liệu camera offline (\(cameraManager.osmCameras.count))"),
-                    footer: Text("Bộ dữ liệu camera phạt nguội và bắn tốc độ tại TP. Cần Thơ, TP.HCM, Hà Nội, Đà Nẵng hoạt động 100% không cần Internet.")
+                    footer: Text("Bộ dữ liệu camera AI phạt nguội và bắn tốc độ tại TP. Cần Thơ, Tỉnh Sóc Trăng, TP.HCM, Hà Nội, Đà Nẵng hoạt động 100% không cần Internet.")
                 ) {
-                    // Nạp riêng camera TP. Cần Thơ
+                    // Nạp camera Cần Thơ & Sóc Trăng
                     Button(action: {
-                        cameraManager.loadCanThoPresetCameras(notify: true)
+                        cameraManager.loadCanThoSocTrangPresetCameras(notify: true)
                         showingSyncAlert = true
                     }) {
                         HStack(spacing: 12) {
@@ -438,10 +438,10 @@ public struct TrafficCameraListView: View {
                                 .foregroundColor(.orange)
                             
                             VStack(alignment: .leading, spacing: 2) {
-                                Text("Nạp Dữ Liệu Camera Cần Thơ (14 Điểm)")
+                                Text("Nạp Camera Cần Thơ & Sóc Trăng (22 Điểm)")
                                     .font(.subheadline.bold())
                                     .foregroundColor(.primary)
-                                Text("Ninh Kiều, Cái Răng, Bình Thủy, Cầu Cần Thơ, Võ Văn Kiệt...")
+                                Text("Gồm 12 nút giao Cần Thơ, 8 nút giao Sóc Trăng, Cầu Cần Thơ, QL1A")
                                     .font(.caption)
                                     .foregroundColor(.secondary)
                             }
@@ -463,7 +463,29 @@ public struct TrafficCameraListView: View {
                                 Text("Di Chuyển Bản Đồ Đến Cần Thơ")
                                     .font(.subheadline.bold())
                                     .foregroundColor(.blue)
-                                Text("Đưa bản đồ về trung tâm Cần Thơ để xem hoặc ghim điểm mới")
+                                Text("Ninh Kiều, Cái Răng, Bình Thủy, Cầu Quang Trung...")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                        .padding(.vertical, 3)
+                    }
+                    
+                    // Di chuyển bản đồ đến Sóc Trăng để xem
+                    Button(action: {
+                        presentationMode.wrappedValue.dismiss()
+                        cameraManager.focusMapOnSocTrang()
+                    }) {
+                        HStack(spacing: 12) {
+                            Image(systemName: "location.circle.fill")
+                                .font(.system(size: 22))
+                                .foregroundColor(.purple)
+                            
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Di Chuyển Bản Đồ Đến Sóc Trăng")
+                                    .font(.subheadline.bold())
+                                    .foregroundColor(.purple)
+                                Text("Trần Hưng Đạo, Lê Duẩn, Lê Hồng Phong, Ngã 3 Trà Tim, QL1A...")
                                     .font(.caption)
                                     .foregroundColor(.secondary)
                             }
@@ -485,7 +507,7 @@ public struct TrafficCameraListView: View {
                                 Text("Nạp Trọn Bộ Camera Việt Nam")
                                     .font(.subheadline.bold())
                                     .foregroundColor(.primary)
-                                Text("Gồm cả Cần Thơ, TP.HCM, Hà Nội, Đà Nẵng, Cao tốc")
+                                Text("Gồm cả Cần Thơ, Sóc Trăng, TP.HCM, Hà Nội, Đà Nẵng, Cao tốc")
                                     .font(.caption)
                                     .foregroundColor(.secondary)
                             }

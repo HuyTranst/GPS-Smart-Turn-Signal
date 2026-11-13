@@ -1,0 +1,311 @@
+[
+  {
+    "id": "CT-01",
+    "province": "Cần Thơ",
+    "district": "Ninh Kiều",
+    "location_name": "Nút giao Cách Mạng Tháng 8 - Nguyễn Văn Cừ",
+    "lat": 10.0526,
+    "lng": 105.7725,
+    "cam_type": "Camera AI phạt nguội (Đèn đỏ & Sai làn)",
+    "speed_limit": 50,
+    "violations": [
+      "Vượt đèn đỏ",
+      "Đi sai làn đường",
+      "Dừng đỗ sai quy định",
+      "Quá tốc độ"
+    ],
+    "source": "Công an TP. Cần Thơ"
+  },
+  {
+    "id": "CT-02",
+    "province": "Cần Thơ",
+    "district": "Ninh Kiều",
+    "location_name": "Nút giao Nguyễn Trãi - Cầu Ninh Kiều",
+    "lat": 10.0381,
+    "lng": 105.7876,
+    "cam_type": "Camera phạt nguội vượt đèn & ngược chiều",
+    "speed_limit": 50,
+    "violations": [
+      "Vượt đèn đỏ",
+      "Đi ngược chiều",
+      "Dừng đỗ trái phép"
+    ],
+    "source": "Công an TP. Cần Thơ"
+  },
+  {
+    "id": "CT-03",
+    "province": "Cần Thơ",
+    "district": "Ninh Kiều",
+    "location_name": "Nút giao Nguyễn Văn Cừ - Võ Văn Kiệt - Mậu Thân",
+    "lat": 10.0468,
+    "lng": 105.7663,
+    "cam_type": "Camera AI phạt nguội",
+    "speed_limit": 50,
+    "violations": [
+      "Vượt đèn đỏ",
+      "Không chấp hành vạch kẻ đường"
+    ],
+    "source": "Công an TP. Cần Thơ"
+  },
+  {
+    "id": "CT-04",
+    "province": "Cần Thơ",
+    "district": "Ninh Kiều",
+    "location_name": "Nút giao Trần Hưng Đạo - Mậu Thân - 3 Tháng 2",
+    "lat": 10.0327,
+    "lng": 105.7702,
+    "cam_type": "Camera giám sát tín hiệu đèn & chuyển làn",
+    "speed_limit": 50,
+    "violations": [
+      "Vượt đèn đỏ",
+      "Đè vạch liền",
+      "Sai làn"
+    ],
+    "source": "Công an TP. Cần Thơ"
+  },
+  {
+    "id": "CT-05",
+    "province": "Cần Thơ",
+    "district": "Ninh Kiều",
+    "location_name": "Nút giao Mậu Thân - 30 Tháng 4",
+    "lat": 10.0245,
+    "lng": 105.7735,
+    "cam_type": "Camera giám sát đèn tín hiệu",
+    "speed_limit": 50,
+    "violations": [
+      "Vượt đèn đỏ",
+      "Dừng đè vạch đi bộ"
+    ],
+    "source": "Công an TP. Cần Thơ"
+  },
+  {
+    "id": "CT-06",
+    "province": "Cần Thơ",
+    "district": "Ninh Kiều",
+    "location_name": "Nút giao Nguyễn Văn Linh - Nguyễn Văn Cừ",
+    "lat": 10.0229,
+    "lng": 105.7562,
+    "cam_type": "Camera AI giám sát nút giao",
+    "speed_limit": 50,
+    "violations": [
+      "Vượt đèn đỏ",
+      "Quá tốc độ",
+      "Rẽ sai quy định"
+    ],
+    "source": "Công an TP. Cần Thơ"
+  },
+  {
+    "id": "CT-07",
+    "province": "Cần Thơ",
+    "district": "Ninh Kiều",
+    "location_name": "Nút giao Nguyễn Văn Linh - 3 Tháng 2",
+    "lat": 10.0175,
+    "lng": 105.7651,
+    "cam_type": "Camera giám sát xe tải & phạt nguội",
+    "speed_limit": 50,
+    "violations": [
+      "Vượt đèn đỏ",
+      "Xe tải đi vào giờ cấm",
+      "Sai làn"
+    ],
+    "source": "Công an TP. Cần Thơ"
+  },
+  {
+    "id": "CT-08",
+    "province": "Cần Thơ",
+    "district": "Ninh Kiều",
+    "location_name": "Nút giao Nguyễn Văn Linh - 30 Tháng 4",
+    "lat": 10.0134,
+    "lng": 105.7728,
+    "cam_type": "Camera AI phạt nguội",
+    "speed_limit": 50,
+    "violations": [
+      "Vượt đèn đỏ",
+      "Lấn làn đường"
+    ],
+    "source": "Công an TP. Cần Thơ"
+  },
+  {
+    "id": "CT-09",
+    "province": "Cần Thơ",
+    "district": "Cái Răng",
+    "location_name": "Cụm Nút giao IC3-1 (Võ Nguyên Giáp - Quang Trung)",
+    "lat": 10.0183,
+    "lng": 105.7947,
+    "cam_type": "Camera đo tốc độ & phạt nguội cửa ngõ",
+    "speed_limit": 60,
+    "violations": [
+      "Quá tốc độ",
+      "Sai làn đường",
+      "Vượt đèn đỏ"
+    ],
+    "source": "Công an TP. Cần Thơ"
+  },
+  {
+    "id": "CT-10",
+    "province": "Cần Thơ",
+    "district": "Cái Răng",
+    "location_name": "Cụm Nút giao IC3-2 (Võ Nguyên Giáp hướng cầu Cần Thơ)",
+    "lat": 10.0162,
+    "lng": 105.7961,
+    "cam_type": "Camera đo tốc độ tự động",
+    "speed_limit": 60,
+    "violations": [
+      "Chạy quá tốc độ quy định"
+    ],
+    "source": "Công an TP. Cần Thơ"
+  },
+  {
+    "id": "CT-11",
+    "province": "Cần Thơ",
+    "district": "Cái Răng",
+    "location_name": "Nút giao IC4 (Quốc lộ 1A - Đường Hậu Giang)",
+    "lat": 9.9922,
+    "lng": 105.7778,
+    "cam_type": "Camera giám sát tốc độ & tải trọng QL1A",
+    "speed_limit": 60,
+    "violations": [
+      "Quá tốc độ",
+      "Vượt ẩu",
+      "Lấn làn ngược chiều"
+    ],
+    "source": "Công an TP. Cần Thơ"
+  },
+  {
+    "id": "CT-12",
+    "province": "Cần Thơ",
+    "district": "Ninh Kiều",
+    "location_name": "Đầu Cầu Quang Trung (Đại lộ Hòa Bình - 30/4)",
+    "lat": 10.022,
+    "lng": 105.786,
+    "cam_type": "Camera giám sát giao thông đô thị",
+    "speed_limit": 50,
+    "violations": [
+      "Chạy quá tốc độ",
+      "Lấn làn đường"
+    ],
+    "source": "Công an TP. Cần Thơ"
+  },
+  {
+    "id": "ST-01",
+    "province": "Sóc Trăng",
+    "district": "TP. Sóc Trăng",
+    "location_name": "Nút giao Lê Duẩn - Lê Hồng Phong",
+    "lat": 9.6015,
+    "lng": 105.9752,
+    "cam_type": "Camera giám sát đèn tín hiệu thông minh",
+    "speed_limit": 50,
+    "violations": [
+      "Vượt đèn đỏ",
+      "Lấn làn",
+      "Không đội mũ bảo hiểm"
+    ],
+    "source": "Công an Tỉnh Sóc Trăng"
+  },
+  {
+    "id": "ST-02",
+    "province": "Sóc Trăng",
+    "district": "TP. Sóc Trăng",
+    "location_name": "Đường Trần Hưng Đạo - Hùng Vương",
+    "lat": 9.6052,
+    "lng": 105.9721,
+    "cam_type": "Camera phạt nguội tốc độ & làn đường",
+    "speed_limit": 50,
+    "violations": [
+      "Chạy quá tốc độ",
+      "Sai làn"
+    ],
+    "source": "Công an Tỉnh Sóc Trăng"
+  },
+  {
+    "id": "ST-03",
+    "province": "Sóc Trăng",
+    "district": "TP. Sóc Trăng",
+    "location_name": "Nút giao Dương Kỳ Hiệp - Trần Hưng Đạo",
+    "lat": 9.608,
+    "lng": 105.9685,
+    "cam_type": "Camera phạt nguội vượt đèn tín hiệu",
+    "speed_limit": 50,
+    "violations": [
+      "Vượt đèn đỏ",
+      "Không chấp hành hiệu lệnh biển báo"
+    ],
+    "source": "Công an Tỉnh Sóc Trăng"
+  },
+  {
+    "id": "ST-04",
+    "province": "Sóc Trăng",
+    "district": "TP. Sóc Trăng",
+    "location_name": "Đường Lý Thường Kiệt (Gần khu vực chợ trung tâm)",
+    "lat": 9.6041,
+    "lng": 105.9803,
+    "cam_type": "Camera giám sát dừng đỗ",
+    "speed_limit": 40,
+    "violations": [
+      "Dừng đỗ xe trái quy định",
+      "Đi vào đường cấm"
+    ],
+    "source": "Công an Tỉnh Sóc Trăng"
+  },
+  {
+    "id": "ST-05",
+    "province": "Sóc Trăng",
+    "district": "TP. Sóc Trăng",
+    "location_name": "Tuyến đường tránh Võ Văn Kiệt (QL1A cũ)",
+    "lat": 9.615,
+    "lng": 105.952,
+    "cam_type": "Camera đo tốc độ tự động 24/7",
+    "speed_limit": 60,
+    "violations": [
+      "Quá tốc độ quy định",
+      "Vượt nơi cấm vượt"
+    ],
+    "source": "Công an Tỉnh Sóc Trăng"
+  },
+  {
+    "id": "ST-06",
+    "province": "Sóc Trăng",
+    "district": "Mỹ Xuyên",
+    "location_name": "Quốc lộ 1A - Đoạn Ngã 3 Trà Tim",
+    "lat": 9.585,
+    "lng": 105.985,
+    "cam_type": "Camera AI phạt nguội cửa ngõ phía Nam",
+    "speed_limit": 60,
+    "violations": [
+      "Quá tốc độ",
+      "Vượt đèn đỏ",
+      "Xe quá khổ quá tải"
+    ],
+    "source": "Công an Tỉnh Sóc Trăng"
+  },
+  {
+    "id": "ST-07",
+    "province": "Sóc Trăng",
+    "district": "Châu Thành",
+    "location_name": "Quốc lộ 1A - Cửa ngõ Châu Thành vào TP. Sóc Trăng",
+    "lat": 9.645,
+    "lng": 105.925,
+    "cam_type": "Camera giám sát tốc độ tự động",
+    "speed_limit": 80,
+    "violations": [
+      "Quá tốc độ",
+      "Đi sai làn đường"
+    ],
+    "source": "Công an Tỉnh Sóc Trăng"
+  },
+  {
+    "id": "ST-08",
+    "province": "Sóc Trăng",
+    "district": "TP. Sóc Trăng",
+    "location_name": "Ngã tư Quốc lộ 1A - Bến xe Sóc Trăng",
+    "lat": 9.6095,
+    "lng": 105.961,
+    "cam_type": "Camera giám sát trật tự giao thông",
+    "speed_limit": 50,
+    "violations": [
+      "Vượt đèn đỏ",
+      "Đón trả khách sai quy định"
+    ],
+    "source": "Công an Tỉnh Sóc Trăng"
+  }
+]

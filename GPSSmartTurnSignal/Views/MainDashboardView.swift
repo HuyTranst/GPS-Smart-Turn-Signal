@@ -65,19 +65,35 @@ public struct MainDashboardView: View {
                 VStack {
                     Spacer()
                     VStack(spacing: 8) {
-                        HStack {
+                        HStack(spacing: 8) {
                             // Nút chuyển nhanh bản đồ về Cần Thơ
                             Button(action: {
                                 cameraManager.focusMapOnCanTho()
                             }) {
                                 HStack(spacing: 4) {
                                     Image(systemName: "building.2.fill")
-                                    Text("Đến Cần Thơ")
+                                    Text("Cần Thơ")
                                 }
                                 .font(.system(size: 11, weight: .bold))
-                                .padding(.horizontal, 10)
+                                .padding(.horizontal, 8)
                                 .padding(.vertical, 6)
                                 .background(Color.blue)
+                                .foregroundColor(.white)
+                                .cornerRadius(12)
+                            }
+                            
+                            // Nút chuyển nhanh bản đồ về Sóc Trăng
+                            Button(action: {
+                                cameraManager.focusMapOnSocTrang()
+                            }) {
+                                HStack(spacing: 4) {
+                                    Image(systemName: "location.circle.fill")
+                                    Text("Sóc Trăng")
+                                }
+                                .font(.system(size: 11, weight: .bold))
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 6)
+                                .background(Color.purple)
                                 .foregroundColor(.white)
                                 .cornerRadius(12)
                             }

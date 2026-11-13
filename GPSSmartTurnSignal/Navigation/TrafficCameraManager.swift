@@ -196,6 +196,12 @@ public final class TrafficCameraManager: ObservableObject {
         focusMapOnCoordinate(coordinate: canThoCoord, title: "TP. Cần Thơ")
     }
     
+    /// Dời bản đồ đến trung tâm TP. Sóc Trăng để xem và ghim camera offline
+    public func focusMapOnSocTrang() {
+        let socTrangCoord = CLLocationCoordinate2D(latitude: 9.6015, longitude: 105.9752)
+        focusMapOnCoordinate(coordinate: socTrangCoord, title: "TP. Sóc Trăng")
+    }
+    
     /// Dời bản đồ đến một tọa độ thành phố bất kỳ
     public func focusMapOnCoordinate(coordinate: CLLocationCoordinate2D, title: String? = nil) {
         isInspectingCameraLocation = true
@@ -523,39 +529,54 @@ public final class TrafficCameraManager: ObservableObject {
     
     // MARK: - Dữ Liệu Camera Giao Thông Trọng Điểm Việt Nam Dùng Offline Sẵn
     
-    /// 14 CAMERA GIAO THÔNG & PHẠT NGUỘI TRỌNG ĐIỂM TP. CẦN THƠ
-    public static let canThoPresets: [TrafficCamera] = [
-        TrafficCamera(id: "vn-ct-01", latitude: 10.0345, longitude: 105.7842, title: "Đại lộ Hòa Bình - Nguyễn Thái Học, Ninh Kiều, Cần Thơ", speedLimitKmh: 50, sourceType: .openStreetMap),
-        TrafficCamera(id: "vn-ct-02", latitude: 10.0260, longitude: 105.7760, title: "Đường 30 Tháng 4 - Trần Văn Hoài, Ninh Kiều, Cần Thơ", speedLimitKmh: 50, sourceType: .openStreetMap),
-        TrafficCamera(id: "vn-ct-03", latitude: 10.0298, longitude: 105.7695, title: "Đường 3 Tháng 2 - Mậu Thân (Ngã tư Xuân Khánh), Cần Thơ", speedLimitKmh: 50, sourceType: .openStreetMap),
-        TrafficCamera(id: "vn-ct-04", latitude: 10.0162, longitude: 105.7538, title: "Đường 3 Tháng 2 - Nguyễn Văn Linh (Cầu Đầu Sấu), Cần Thơ", speedLimitKmh: 60, sourceType: .openStreetMap),
-        TrafficCamera(id: "vn-ct-05", latitude: 10.0315, longitude: 105.7482, title: "Đại lộ Nguyễn Văn Cừ - Nguyễn Văn Linh (BV Đa khoa TW Cần Thơ)", speedLimitKmh: 50, sourceType: .openStreetMap),
-        TrafficCamera(id: "vn-ct-06", latitude: 10.0532, longitude: 105.7680, title: "Đại lộ Nguyễn Văn Cừ - CMT8 (Ngã tư Cồn Khương, Bình Thủy)", speedLimitKmh: 50, sourceType: .openStreetMap),
-        TrafficCamera(id: "vn-ct-07", latitude: 10.0715, longitude: 105.7535, title: "Đường Cách Mạng Tháng 8 - Lê Hồng Phong (Cầu Bình Thủy)", speedLimitKmh: 50, sourceType: .openStreetMap),
-        TrafficCamera(id: "vn-ct-08", latitude: 10.0075, longitude: 105.8115, title: "Nút giao Cầu Cần Thơ - Quốc lộ 1A (Bờ Cái Răng)", speedLimitKmh: 80, sourceType: .openStreetMap),
-        TrafficCamera(id: "vn-ct-09", latitude: 10.0035, longitude: 105.7770, title: "Quốc lộ 1A - Võ Nguyên Giáp (Nút giao IC3 / Bến xe Cần Thơ)", speedLimitKmh: 60, sourceType: .openStreetMap),
-        TrafficCamera(id: "vn-ct-10", latitude: 10.0560, longitude: 105.7420, title: "Đại lộ Võ Văn Kiệt - Nguyễn Văn Cừ (Đường Sân bay Cần Thơ)", speedLimitKmh: 70, sourceType: .openStreetMap),
-        TrafficCamera(id: "vn-ct-11", latitude: 10.0435, longitude: 105.7865, title: "Đường Trần Phú - Hùng Vương (Vòng xoay Công viên nước, Ninh Kiều)", speedLimitKmh: 50, sourceType: .openStreetMap),
-        TrafficCamera(id: "vn-ct-12", latitude: 10.0210, longitude: 105.7825, title: "Đường 30 Tháng 4 - Đường Quang Trung (Đầu Cầu Quang Trung)", speedLimitKmh: 50, sourceType: .openStreetMap),
-        TrafficCamera(id: "vn-ct-13", latitude: 10.0235, longitude: 105.7585, title: "Quốc lộ 91B - Nguyễn Văn Linh (Nút giao Metro Hưng Lợi)", speedLimitKmh: 60, sourceType: .openStreetMap),
-        TrafficCamera(id: "vn-ct-14", latitude: 9.9820, longitude: 105.8180, title: "Đường Nam Sông Hậu - Nút giao Cảng Cái Cui, Cái Răng", speedLimitKmh: 60, sourceType: .openStreetMap)
+    /// BỘ DỮ LIỆU CAMERA GIAO THÔNG & PHẠT NGUỘI CẦN THƠ - SÓC TRĂNG (ĐỒNG BẰNG SÔNG CỬU LONG)
+    public static let canThoSocTrangPresets: [TrafficCamera] = [
+        // 12 NÚT GIAO THÔNG & CAMERA AI PHẠT NGUỘI TP. CẦN THƠ
+        TrafficCamera(id: "ct_01", latitude: 10.0526, longitude: 105.7725, title: "[Cần Thơ] Nút giao Cách Mạng Tháng 8 - Nguyễn Văn Cừ (Camera AI phạt nguội)", speedLimitKmh: 50, sourceType: .openStreetMap),
+        TrafficCamera(id: "ct_02", latitude: 10.0381, longitude: 105.7876, title: "[Cần Thơ] Nút giao Nguyễn Trãi - Cầu Ninh Kiều (Camera phạt nguội vượt đèn & ngược chiều)", speedLimitKmh: 50, sourceType: .openStreetMap),
+        TrafficCamera(id: "ct_03", latitude: 10.0468, longitude: 105.7663, title: "[Cần Thơ] Nút giao Nguyễn Văn Cừ - Võ Văn Kiệt - Mậu Thân (Camera AI phạt nguội)", speedLimitKmh: 50, sourceType: .openStreetMap),
+        TrafficCamera(id: "ct_04", latitude: 10.0327, longitude: 105.7702, title: "[Cần Thơ] Nút giao Trần Hưng Đạo - Mậu Thân - 3 Tháng 2 (Camera giám sát tín hiệu đèn & chuyển làn)", speedLimitKmh: 50, sourceType: .openStreetMap),
+        TrafficCamera(id: "ct_05", latitude: 10.0245, longitude: 105.7735, title: "[Cần Thơ] Nút giao Mậu Thân - 30 Tháng 4 (Camera giám sát đèn tín hiệu)", speedLimitKmh: 50, sourceType: .openStreetMap),
+        TrafficCamera(id: "ct_06", latitude: 10.0229, longitude: 105.7562, title: "[Cần Thơ] Nút giao Nguyễn Văn Linh - Nguyễn Văn Cừ (Camera AI giám sát nút giao)", speedLimitKmh: 50, sourceType: .openStreetMap),
+        TrafficCamera(id: "ct_07", latitude: 10.0175, longitude: 105.7651, title: "[Cần Thơ] Nút giao Nguyễn Văn Linh - 3 Tháng 2 (Camera giám sát xe tải & phạt nguội)", speedLimitKmh: 50, sourceType: .openStreetMap),
+        TrafficCamera(id: "ct_08", latitude: 10.0134, longitude: 105.7728, title: "[Cần Thơ] Nút giao Nguyễn Văn Linh - 30 Tháng 4 (Camera AI phạt nguội)", speedLimitKmh: 50, sourceType: .openStreetMap),
+        TrafficCamera(id: "ct_09", latitude: 10.0183, longitude: 105.7947, title: "[Cần Thơ] Cụm Nút giao IC3-1 (Võ Nguyên Giáp - Quang Trung) (Camera đo tốc độ & phạt nguội cửa ngõ)", speedLimitKmh: 60, sourceType: .openStreetMap),
+        TrafficCamera(id: "ct_10", latitude: 10.0162, longitude: 105.7961, title: "[Cần Thơ] Cụm Nút giao IC3-2 (Võ Nguyên Giáp hướng cầu Cần Thơ) (Camera đo tốc độ tự động)", speedLimitKmh: 60, sourceType: .openStreetMap),
+        TrafficCamera(id: "ct_11", latitude: 9.9922, longitude: 105.7778, title: "[Cần Thơ] Nút giao IC4 (Quốc lộ 1A - Đường Hậu Giang) (Camera giám sát tốc độ & tải trọng QL1A)", speedLimitKmh: 60, sourceType: .openStreetMap),
+        TrafficCamera(id: "ct_12", latitude: 10.0220, longitude: 105.7860, title: "[Cần Thơ] Đầu Cầu Quang Trung (Đại lộ Hòa Bình - 30/4) (Camera giám sát giao thông đô thị)", speedLimitKmh: 50, sourceType: .openStreetMap),
+        TrafficCamera(id: "vn_ct_cau_ct", latitude: 10.0075, longitude: 105.8115, title: "[Cần Thơ] Nút giao Cầu Cần Thơ - Quốc lộ 1A (Bờ Cái Răng)", speedLimitKmh: 80, sourceType: .openStreetMap),
+        TrafficCamera(id: "vn_ct_nam_song_hau", latitude: 9.9820, longitude: 105.8180, title: "[Cần Thơ] Tuyến Nam Sông Hậu - Nút giao Cảng Cái Cui, Cái Răng", speedLimitKmh: 60, sourceType: .openStreetMap),
+        
+        // 8 NÚT GIAO THÔNG & CAMERA AI PHẠT NGUỘI TỈNH SÓC TRĂNG
+        TrafficCamera(id: "st_01", latitude: 9.6015, longitude: 105.9752, title: "[Sóc Trăng] Nút giao Lê Duẩn - Lê Hồng Phong (Camera giám sát đèn tín hiệu thông minh)", speedLimitKmh: 50, sourceType: .openStreetMap),
+        TrafficCamera(id: "st_02", latitude: 9.6052, longitude: 105.9721, title: "[Sóc Trăng] Đường Trần Hưng Đạo - Hùng Vương (Camera phạt nguội tốc độ & làn đường)", speedLimitKmh: 50, sourceType: .openStreetMap),
+        TrafficCamera(id: "st_03", latitude: 9.6080, longitude: 105.9685, title: "[Sóc Trăng] Nút giao Dương Kỳ Hiệp - Trần Hưng Đạo (Camera phạt nguội vượt đèn tín hiệu)", speedLimitKmh: 50, sourceType: .openStreetMap),
+        TrafficCamera(id: "st_04", latitude: 9.6041, longitude: 105.9803, title: "[Sóc Trăng] Đường Lý Thường Kiệt (Gần khu vực chợ trung tâm) (Camera giám sát dừng đỗ)", speedLimitKmh: 40, sourceType: .openStreetMap),
+        TrafficCamera(id: "st_05", latitude: 9.6150, longitude: 105.9520, title: "[Sóc Trăng] Tuyến đường tránh Võ Văn Kiệt (QL1A cũ) (Camera đo tốc độ tự động 24/7)", speedLimitKmh: 60, sourceType: .openStreetMap),
+        TrafficCamera(id: "st_06", latitude: 9.5850, longitude: 105.9850, title: "[Sóc Trăng] Quốc lộ 1A - Đoạn Ngã 3 Trà Tim (Camera AI phạt nguội cửa ngõ phía Nam)", speedLimitKmh: 60, sourceType: .openStreetMap),
+        TrafficCamera(id: "st_07", latitude: 9.6450, longitude: 105.9250, title: "[Sóc Trăng] Quốc lộ 1A - Cửa ngõ Châu Thành vào TP. Sóc Trăng (Camera giám sát tốc độ tự động)", speedLimitKmh: 80, sourceType: .openStreetMap),
+        TrafficCamera(id: "st_08", latitude: 9.6095, longitude: 105.9610, title: "[Sóc Trăng] Ngã tư Quốc lộ 1A - Bến xe Sóc Trăng (Camera giám sát trật tự giao thông)", speedLimitKmh: 50, sourceType: .openStreetMap)
     ]
     
-    /// Nạp dữ liệu camera giao thông TP. Cần Thơ để dùng offline không cần mạng
-    public func loadCanThoPresetCameras(notify: Bool = true) {
+    /// Nạp dữ liệu camera giao thông Cần Thơ & Sóc Trăng để dùng offline không cần mạng
+    public func loadCanThoSocTrangPresetCameras(notify: Bool = true) {
         var existingDict = [String: TrafficCamera]()
         for cam in self.osmCameras {
             existingDict[cam.id] = cam
         }
-        for cam in Self.canThoPresets {
+        for cam in Self.canThoSocTrangPresets {
             existingDict[cam.id] = cam
         }
         self.osmCameras = Array(existingDict.values).sorted(by: { $0.title < $1.title })
         saveOsmCacheToDisk()
         rebuildAllCamerasList()
         if notify {
-            notifyMessage("Đã nạp 14 camera giao thông TP. Cần Thơ dùng offline!", duration: 4.0)
+            notifyMessage("Đã nạp \(Self.canThoSocTrangPresets.count) camera giao thông Cần Thơ & Sóc Trăng dùng offline!", duration: 4.0)
         }
+    }
+    
+    public func loadCanThoPresetCameras(notify: Bool = true) {
+        loadCanThoSocTrangPresetCameras(notify: notify)
     }
     
     public func loadBuiltinVietnamCamerasIfNeeded() {
@@ -565,7 +586,7 @@ public final class TrafficCameraManager: ObservableObject {
     }
     
     public func loadBuiltinVietnamPresetCameras(notify: Bool = true) {
-        var presets: [TrafficCamera] = Self.canThoPresets
+        var presets: [TrafficCamera] = Self.canThoSocTrangPresets
         
         presets.append(contentsOf: [
             // TP. HỒ CHÍ MINH
