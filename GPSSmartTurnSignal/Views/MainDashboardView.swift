@@ -1,4 +1,5 @@
 import SwiftUI
+import CoreLocation
 
 /// Màn hình điều khiển chính (Dashboard) tự động bảo vệ tài xế khi qua ngã rẽ và cảnh báo Camera giao thông 500m
 public struct MainDashboardView: View {
