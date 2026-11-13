@@ -217,6 +217,14 @@ public struct OfflineMapView: UIViewRepresentable {
         let tileOverlay = OfflineMKTileOverlay()
         mapView.addOverlay(tileOverlay, level: .aboveRoads)
         
+        // Thêm nhận diện cử chỉ Nhấn Giữ (Long Press) để ghim camera tại bất kỳ điểm nào trên bản đồ từ xa
+        let longPress = UILongPressGestureRecognizer(
+            target: context.coordinator,
+            action: #selector(context.coordinator.handleMapLongPress(_:))
+        )
+        longPress.minimumPressDuration = 0.45
+        mapView.addGestureRecognizer(longPress)
+        
         context.coordinator.mapView = mapView
         return mapView
     }
@@ -278,6 +286,8 @@ public struct OfflineMapView: UIViewRepresentable {
                 guard let self = self else { return }
                 self.isFollowingUser = true
                 TrafficCameraManager.shared.isInspectingCameraLocation = false
+                TrafficCameraManager.shared.isMapPannedAwayFromUser = false
+                TrafficCameraManager.shared.selectedMapCamera = nil
                 
                 guard let mv = self.mapView else { return }
                 mv.selectedAnnotations.forEach { mv.deselectAnnotation($0, animated: true) }
@@ -431,18 +441,21 @@ public struct OfflineMapView: UIViewRepresentable {
                 return vehicleView
             }
             
-            // 2. Biểu tượng Camera giao thông (Màu đỏ nổi bật)
+            // 2. Biểu tượng Camera giao thông (Hình Camera an ninh CCTV gắn tường)
             if let camAnnotation = annotation as? TrafficCameraAnnotation {
                 let identifier = "TrafficCameraMarker"
                 var view = mapView.dequeueReusableAnnotationView(withIdentifier: identifier) as? MKMarkerAnnotationView
                 if view == nil {
                     view = MKMarkerAnnotationView(annotation: annotation, reuseIdentifier: identifier)
                     view?.canShowCallout = true
+                    let detailBtn = UIButton(type: .detailDisclosure)
+                    detailBtn.tintColor = .systemRed
+                    view?.rightCalloutAccessoryView = detailBtn
                 } else {
                     view?.annotation = annotation
                 }
                 view?.markerTintColor = UIColor.systemRed
-                view?.glyphImage = UIImage(systemName: "camera.fill")
+                view?.glyphImage = UIImage(named: "cctv_camera") ?? UIImage(systemName: "video.fill")
                 return view
             }
             
@@ -459,6 +472,60 @@ public struct OfflineMapView: UIViewRepresentable {
             view?.markerTintColor = UIColor.systemOrange
             view?.glyphImage = UIImage(systemName: "arrow.turn.up.right")
             return view
+        }
+        
+        // MARK: - Delegate tương tác với Marker Camera & Cử chỉ bản đồ
+        
+        public func mapView(_ mapView: MKMapView, annotationView view: MKAnnotationView, calloutAccessoryControlTapped control: UIControl) {
+            if let camAnn = view.annotation as? TrafficCameraAnnotation {
+                TrafficCameraManager.shared.selectedMapCamera = camAnn.camera
+                NotificationCenter.default.post(name: NSNotification.Name("EditCameraNotification"), object: camAnn.camera)
+            }
+        }
+        
+        public func mapView(_ mapView: MKMapView, didSelect view: MKAnnotationView) {
+            if let camAnn = view.annotation as? TrafficCameraAnnotation {
+                TrafficCameraManager.shared.selectedMapCamera = camAnn.camera
+                let feedback = UISelectionFeedbackGenerator()
+                feedback.selectionChanged()
+            }
+        }
+        
+        public func mapView(_ mapView: MKMapView, didDeselect view: MKAnnotationView) {
+            if let deselected = view.annotation as? TrafficCameraAnnotation {
+                if TrafficCameraManager.shared.selectedMapCamera?.id == deselected.camera.id {
+                    TrafficCameraManager.shared.selectedMapCamera = nil
+                }
+            }
+        }
+        
+        public func mapViewDidChangeVisibleRegion(_ mapView: MKMapView) {
+            TrafficCameraManager.shared.currentMapCenterCoordinate = mapView.centerCoordinate
+            // Nếu người dùng kéo bản đồ rời xa vị trí xe, đánh dấu panned
+            if let userLoc = LocationManager.shared.currentLocation {
+                let dist = userLoc.distance(from: CLLocation(latitude: mapView.centerCoordinate.latitude, longitude: mapView.centerCoordinate.longitude))
+                if dist > 150.0 {
+                    isFollowingUser = false
+                    TrafficCameraManager.shared.isMapPannedAwayFromUser = true
+                }
+            }
+        }
+        
+        @objc func handleMapLongPress(_ gesture: UILongPressGestureRecognizer) {
+            guard gesture.state == .began, let mv = mapView else { return }
+            let point = gesture.location(in: mv)
+            let coord = mv.convert(point, toCoordinateFrom: mv)
+            let feedback = UIImpactFeedbackGenerator(style: .medium)
+            feedback.impactOccurred()
+            isFollowingUser = false
+            TrafficCameraManager.shared.isMapPannedAwayFromUser = true
+            NotificationCenter.default.post(
+                name: NSNotification.Name("PinCameraAtCoordinate"),
+                object: [
+                    "latitude": coord.latitude,
+                    "longitude": coord.longitude
+                ]
+            )
         }
         
         /// Cập nhật các điểm Camera trên bản đồ (kể cả khi tên đường hoặc tốc độ vừa được cập nhật)

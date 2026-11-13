@@ -38,6 +38,8 @@ public final class NavigationEngine: ObservableObject {
     private var turnStartTime: Date = Date.distantPast
     private var turnCompletionSteadyCount = 0
     private var lastRecordedCourse: Double = 0.0
+    private var maxTurnDeviationReached: Double = 0.0
+    private var falseTurnSteadyCount = 0
     
     // Simulation Timer
     private var simulationTimer: Timer?
@@ -62,6 +64,8 @@ public final class NavigationEngine: ObservableObject {
         hasEstablishedBaseline = false
         courseHistory.removeAll()
         turnCompletionSteadyCount = 0
+        falseTurnSteadyCount = 0
+        maxTurnDeviationReached = 0.0
         locationManager.startTracking()
         print("Free-ride Auto Protection ACTIVE (Zero-Delay Mode)")
     }
@@ -132,6 +136,8 @@ public final class NavigationEngine: ObservableObject {
                 turnStartHeading = referenceHeading
                 turnStartTime = now
                 turnCompletionSteadyCount = 0
+                falseTurnSteadyCount = 0
+                maxTurnDeviationReached = abs(delta)
                 detectedTurnState = .right
                 alertBannerText = "🚨 ĐANG RẼ PHẢI - ĐÃ BẬT XI NHAN PHẢI!"
                 print(">>> TỰ ĐỘNG BẬT XI NHAN PHẢI TỨC THÌ (Delta: +\(Int(delta))°, Speed: \(Int(speed))km/h)")
@@ -142,6 +148,8 @@ public final class NavigationEngine: ObservableObject {
                 turnStartHeading = referenceHeading
                 turnStartTime = now
                 turnCompletionSteadyCount = 0
+                falseTurnSteadyCount = 0
+                maxTurnDeviationReached = abs(delta)
                 detectedTurnState = .left
                 alertBannerText = "🚨 ĐANG RẼ TRÁI - ĐÃ BẬT XI NHAN TRÁI!"
                 print(">>> TỰ ĐỘNG BẬT XI NHAN TRÁI TỨC THÌ (Delta: \(Int(delta))°, Speed: \(Int(speed))km/h)")
@@ -151,23 +159,63 @@ public final class NavigationEngine: ObservableObject {
                 alertBannerText = "🚗 Đang chạy thẳng (\(Int(speed)) km/h) - Nhạy bẻ lái: \(Int(settings.turnSensitivityDegrees))°"
             }
         }
-        // 4. KHI ĐANG BẬT XI NHAN (XE ĐANG TRONG KHÚC RẼ):
+        // 4. KHI ĐANG BẬT XI NHAN (XE ĐANG TRONG KHÚC RẼ HOẶC VỪA LẮC LÁI/NGHIÊNG NHẸ):
         else {
-            let totalTurned = abs(normalizeAngle(course - turnStartHeading))
-            let courseJitter = abs(normalizeAngle(course - lastRecordedCourse))
             let elapsedSinceTurn = now.timeIntervalSince(turnStartTime)
+            let currentDeviationFromStart = abs(normalizeAngle(course - turnStartHeading))
+            let courseJitter = abs(normalizeAngle(course - lastRecordedCourse))
             
-            // Đợi qua ít nhất 6 giây để xe đi hết giao lộ mới xét tự tắt khi chạy thẳng (hoặc hết 180s delay tự tắt)
-            if elapsedSinceTurn >= 6.0 && totalTurned >= 38.0 && courseJitter < 5.0 {
+            // Cập nhật góc lệch lớn nhất đạt được kể từ khi bắt đầu bật xi nhan
+            if currentDeviationFromStart > maxTurnDeviationReached {
+                maxTurnDeviationReached = currentDeviationFromStart
+            }
+            
+            // =========================================================================
+            // A. KIỂM TRA HỦY NHẬN DIỆN SAI (XE CHỈ NGHIÊNG NHẸ / LÁCH XE RỒI ĐI THẲNG TIẾP)
+            // =========================================================================
+            // 1) Xe trả lái về lại gần hướng cũ (lệch < 9.0°) và chạy thẳng ổn định (jitter < 4.5°) sau >= 1.0s.
+            // HOẶC
+            // 2) Đã trôi qua >= 2.2s nhưng góc lệch lớn nhất CHƯA TỪNG vượt qua 25.0° (maxTurnDeviationReached < 25.0°)
+            //    và xe duy trì đi thẳng ổn định (jitter < 4.0°) -> Không phải rẽ ngã rẽ mà chỉ là lượn nhẹ/nghiêng xe!
+            let returnedToOriginalStraight = (elapsedSinceTurn >= 1.0 && currentDeviationFromStart < 9.0 && courseJitter < 4.5)
+            let slightTiltStillStraight = (elapsedSinceTurn >= 2.2 && maxTurnDeviationReached < 25.0 && courseJitter < 4.0)
+            
+            if returnedToOriginalStraight || slightTiltStillStraight {
+                falseTurnSteadyCount += 1
+                if falseTurnSteadyCount >= 2 {
+                    print("<<< HỦY NHẬN DIỆN SAI: Xe chỉ nghiêng nhẹ (\(Int(maxTurnDeviationReached))°) rồi đi thẳng -> TỰ TẮT XI NHAN NGAY!")
+                    turnController.turnOff(speak: false)
+                    courseHistory.removeAll()
+                    baselineHeading = course
+                    detectedTurnState = .off
+                    alertBannerText = "ℹ️ Đã tự tắt xi nhan (chỉ nghiêng nhẹ / tiếp tục đi thẳng)"
+                    falseTurnSteadyCount = 0
+                    turnCompletionSteadyCount = 0
+                    maxTurnDeviationReached = 0.0
+                    lastRecordedCourse = course
+                    return
+                }
+            } else {
+                falseTurnSteadyCount = 0
+            }
+            
+            // =========================================================================
+            // B. XE RẼ THẬT SỰ (ĐÃ BẺ LÁI QUA NGÃ RẼ VÀ ĐI THẲNG Ở ĐƯỜNG MỚI)
+            // =========================================================================
+            // Đã rẽ thật (góc lệch đạt >= 30.0°), đã qua giao lộ ít nhất 4.0s,
+            // và đã ổn định trên đường mới (jitter < 4.5° trong 4 mẫu liên tiếp).
+            if elapsedSinceTurn >= 4.0 && maxTurnDeviationReached >= 30.0 && courseJitter < 4.5 {
                 turnCompletionSteadyCount += 1
                 if turnCompletionSteadyCount >= 4 {
-                    print("<<< XE ĐÃ HOÀN THÀNH RẼ VÀ ĐI THẲNG -> TỰ TẮT XI NHAN")
-                    turnController.turnOff()
+                    print("<<< XE ĐÃ HOÀN THÀNH RẼ THẬT VÀ ĐI THẲNG TRÊN ĐƯỜNG MỚI -> TỰ TẮT XI NHAN")
+                    turnController.turnOff(speak: true)
                     courseHistory.removeAll()
                     baselineHeading = course
                     detectedTurnState = .off
                     alertBannerText = "✅ ĐÃ QUA NGÃ RẼ - SẴN SÀNG LƯỢT MỚI"
                     turnCompletionSteadyCount = 0
+                    falseTurnSteadyCount = 0
+                    maxTurnDeviationReached = 0.0
                 }
             } else {
                 turnCompletionSteadyCount = 0

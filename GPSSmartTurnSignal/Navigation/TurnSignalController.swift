@@ -58,7 +58,7 @@ public final class TurnSignalController: ObservableObject {
     }
     
     /// Tắt toàn bộ xi nhan
-    public func turnOff() {
+    public func turnOff(speak: Bool = true) {
         autoOffTimer?.invalidate()
         autoOffTimer = nil
         blinkTimer?.invalidate()
@@ -71,7 +71,9 @@ public final class TurnSignalController: ObservableObject {
         // Gửi lệnh TURN_OFF tới ESP32
         hardwareService.sendCommand(.turnOff)
         
-        speakVoice("Xi nhan đã tắt")
+        if speak {
+            speakVoice("Xi nhan đã tắt")
+        }
         
         if settings.isHapticFeedbackEnabled {
             let feedback = UINotificationFeedbackGenerator()

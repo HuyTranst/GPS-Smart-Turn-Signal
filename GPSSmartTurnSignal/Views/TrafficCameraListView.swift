@@ -2,6 +2,32 @@ import SwiftUI
 import CoreLocation
 import MapKit
 
+/// View biểu tượng Camera giám sát an ninh CCTV gắn tường (chuẩn theo hình người dùng cung cấp)
+public struct CCTVCameraIconView: View {
+    public var size: CGFloat
+    public var color: Color
+    
+    public init(size: CGFloat = 20, color: Color = .white) {
+        self.size = size
+        self.color = color
+    }
+    
+    public var body: some View {
+        if UIImage(named: "cctv_camera") != nil {
+            Image("cctv_camera")
+                .renderingMode(.template)
+                .resizable()
+                .scaledToFit()
+                .frame(width: size, height: size)
+                .foregroundColor(color)
+        } else {
+            Image(systemName: "video.fill")
+                .font(.system(size: size * 0.85, weight: .bold))
+                .foregroundColor(color)
+        }
+    }
+}
+
 /// Chế độ mở màn hình thêm mới hoặc chỉnh sửa tên đường Camera giao thông
 public enum CameraEditorMode: Identifiable {
     case create(coordinate: CLLocationCoordinate2D)
@@ -9,8 +35,8 @@ public enum CameraEditorMode: Identifiable {
     
     public var id: String {
         switch self {
-        case .create:
-            return "create"
+        case .create(let coord):
+            return "create-\(coord.latitude)-\(coord.longitude)"
         case .edit(let cam):
             return "edit-\(cam.id)"
         }
@@ -57,9 +83,27 @@ public struct CameraEditorSheet: View {
     public var body: some View {
         NavigationView {
             Form {
+                Section {
+                    HStack(spacing: 14) {
+                        CCTVCameraIconView(size: 32, color: .orange)
+                            .frame(width: 44, height: 44)
+                            .background(Color.orange.opacity(0.15))
+                            .clipShape(Circle())
+                        
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text(navigationTitleText)
+                                .font(.headline)
+                            Text("Tọa độ: \(String(format: "%.5f, %.5f", targetCoordinate.latitude, targetCoordinate.longitude))")
+                                .font(.caption.monospaced())
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                    .padding(.vertical, 4)
+                }
+                
                 Section(
                     header: Text("Tên đường / Địa chỉ gần đúng"),
-                    footer: Text("Hệ thống tự lấy tên đường hoặc địa chỉ gần đúng. Bạn có thể nhập lại thủ công; nếu bỏ trống sẽ tự động lưu là \"No name\".")
+                    footer: Text("Hệ thống tự động dò tên đường gần đúng. Bạn có thể chỉnh sửa lại thủ công; nếu bỏ trống sẽ tự lưu là \"No name\".")
                 ) {
                     HStack {
                         TextField("Nhập tên đường hoặc để trống (No name)", text: $streetTitle)
@@ -79,12 +123,12 @@ public struct CameraEditorSheet: View {
                             if isResolvingAddress {
                                 ProgressView()
                                     .scaleEffect(0.85)
-                                Text("Đang tìm tên đường từ tọa độ...")
+                                Text("Đang dò tên đường từ tọa độ...")
                                     .foregroundColor(.secondary)
                             } else {
                                 Image(systemName: "location.magnifyingglass")
                                     .foregroundColor(.blue)
-                                Text("Tự động lấy tên đường / địa chỉ")
+                                Text("Tự động lấy lại tên đường / địa chỉ")
                             }
                         }
                     }
@@ -97,16 +141,6 @@ public struct CameraEditorSheet: View {
                             .foregroundColor(.orange)
                         TextField("Ví dụ: 50, 60, 80 (bỏ trống nếu không rõ)", text: $speedLimitText)
                             .keyboardType(.numberPad)
-                    }
-                }
-                
-                Section(header: Text("Tọa độ GPS đã chốt")) {
-                    HStack {
-                        Text("Vĩ độ / Kinh độ")
-                            .foregroundColor(.secondary)
-                        Spacer()
-                        Text(String(format: "%.5f, %.5f", targetCoordinate.latitude, targetCoordinate.longitude))
-                            .font(.system(.caption, design: .monospaced))
                     }
                 }
             }
@@ -171,6 +205,7 @@ public struct TrafficCameraListView: View {
     
     @State private var editorMode: CameraEditorMode? = nil
     @State private var showingNoGPSAlert = false
+    @State private var showingSyncAlert = false
     
     private static let rowDateFormatter: DateFormatter = {
         let formatter = DateFormatter()
@@ -183,11 +218,12 @@ public struct TrafficCameraListView: View {
     public var body: some View {
         NavigationView {
             List {
-                // Section 1: Thao tác ghim camera tại vị trí hiện tại
+                // Section 1: Thao tác ghim camera (tại xe hoặc từ xa theo tâm bản đồ)
                 Section(
-                    header: Text("Định vị camera giao thông"),
-                    footer: Text("Ghim vị trí kèm tự động lấy tên đường (hoặc sửa thủ công). Nếu không có mạng hoặc không tìm thấy tên đường sẽ ghi \"No name\".")
+                    header: Text("Định vị & Ghim camera giao thông"),
+                    footer: Text("Có thể ghim tại vị trí xe hiện tại HOẶC rê bản đồ đến ngã tư bất kỳ rồi ghim từ xa mà không cần chạy xe đến nơi.")
                 ) {
+                    // 1. Ghim tại vị trí xe hiện tại
                     Button(action: {
                         guard let coord = locationManager.currentLocation?.coordinate else {
                             showingNoGPSAlert = true
@@ -196,29 +232,58 @@ public struct TrafficCameraListView: View {
                         editorMode = .create(coordinate: coord)
                     }) {
                         HStack(spacing: 12) {
-                            Image(systemName: "camera.badge.plus")
-                                .font(.system(size: 20, weight: .bold))
-                                .foregroundColor(.orange)
+                            CCTVCameraIconView(size: 22, color: .orange)
+                                .frame(width: 32, height: 32)
+                                .background(Color.orange.opacity(0.15))
+                                .clipShape(Circle())
                             
                             VStack(alignment: .leading, spacing: 3) {
-                                Text("Ghim Camera Tại Vị Trí Này")
+                                Text("Ghim Tại Vị Trí Xe Hiện Tại")
                                     .font(.headline)
                                     .foregroundColor(.primary)
-                                Text("Chốt tọa độ hiện tại, tự lấy tên đường hoặc nhập thủ công")
+                                Text("Chốt tọa độ GPS hiện tại, tự lấy tên đường hoặc nhập thủ công")
                                     .font(.caption)
                                     .foregroundColor(.secondary)
                             }
                         }
-                        .padding(.vertical, 4)
+                        .padding(.vertical, 3)
                     }
                     
+                    // 2. Ghim tại vị trí tâm bản đồ đang xem (Ghim từ xa)
+                    if let centerCoord = cameraManager.currentMapCenterCoordinate {
+                        Button(action: {
+                            editorMode = .create(coordinate: centerCoord)
+                        }) {
+                            HStack(spacing: 12) {
+                                Image(systemName: "scope")
+                                    .font(.system(size: 20, weight: .bold))
+                                    .foregroundColor(.blue)
+                                    .frame(width: 32, height: 32)
+                                    .background(Color.blue.opacity(0.15))
+                                    .clipShape(Circle())
+                                
+                                VStack(alignment: .leading, spacing: 3) {
+                                    Text("Ghim Tại Vị Trí Tâm Bản Đồ (Từ xa)")
+                                        .font(.subheadline.bold())
+                                        .foregroundColor(.primary)
+                                    Text("Tọa độ tâm: \(String(format: "%.4f, %.4f", centerCoord.latitude, centerCoord.longitude))")
+                                        .font(.caption.monospaced())
+                                        .foregroundColor(.secondary)
+                                }
+                            }
+                            .padding(.vertical, 3)
+                        }
+                    }
+                    
+                    // 3. Ghim nhanh 1 chạm
                     Button(action: {
                         cameraManager.saveCameraAtCurrentLocation()
                     }) {
                         HStack(spacing: 12) {
                             Image(systemName: "bolt.circle.fill")
                                 .font(.system(size: 20, weight: .bold))
-                                .foregroundColor(.blue)
+                                .foregroundColor(.yellow)
+                                .frame(width: 32, height: 32)
                             
                             VStack(alignment: .leading, spacing: 2) {
                                 Text("Ghim Nhanh 1 Chạm")
@@ -240,9 +305,7 @@ public struct TrafficCameraListView: View {
                             openCameraOnMap(activeCam)
                         }) {
                             HStack {
-                                Image(systemName: "exclamationmark.triangle.fill")
-                                    .foregroundColor(.red)
-                                    .font(.title2)
+                                CCTVCameraIconView(size: 22, color: .red)
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text(activeCam.title)
                                         .font(.headline)
@@ -266,7 +329,7 @@ public struct TrafficCameraListView: View {
                     footer: Text("Nhấp trực tiếp vào một camera để mở bản đồ ngay tại vị trí đó.")
                 ) {
                     if cameraManager.localCameras.isEmpty {
-                        Text("Chưa có camera nào được lưu. Hãy bấm 'Ghim Camera' khi đi ngang qua các trụ camera giao thông!")
+                        Text("Chưa có camera nào được lưu. Hãy bấm 'Ghim Camera' hoặc nhấn giữ trên bản đồ để thêm!")
                             .font(.caption)
                             .foregroundColor(.secondary)
                             .padding(.vertical, 8)
@@ -283,12 +346,34 @@ public struct TrafficCameraListView: View {
                     }
                 }
                 
-                // Section 4: Danh sách Camera từ OpenStreetMap (nếu đã tải cache)
-                if !cameraManager.osmCameras.isEmpty {
-                    Section(header: Text("Camera OpenStreetMap (\(cameraManager.osmCameras.count))")) {
-                        ForEach(cameraManager.osmCameras) { cam in
-                            cameraRow(cam, editable: false)
+                // Section 4: Dữ liệu Camera Offline (Trọng điểm Việt Nam & OSM)
+                Section(
+                    header: Text("Dữ liệu camera offline (\(cameraManager.osmCameras.count))"),
+                    footer: Text("Bộ dữ liệu các camera phạt nguội và bắn tốc độ trọng điểm tại Hà Nội, TP.HCM, Đà Nẵng, QL1A và các tuyến cao tốc hoạt động 100% không cần Internet.")
+                ) {
+                    Button(action: {
+                        cameraManager.loadBuiltinVietnamPresetCameras(notify: true)
+                        showingSyncAlert = true
+                    }) {
+                        HStack(spacing: 12) {
+                            Image(systemName: "arrow.triangle.2.circlepath.circle.fill")
+                                .font(.system(size: 20))
+                                .foregroundColor(.green)
+                            
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Nạp Dữ Liệu Camera Trọng Điểm Việt Nam")
+                                    .font(.subheadline.bold())
+                                    .foregroundColor(.primary)
+                                Text("Nạp sẵn camera phạt nguội TP.HCM, Hà Nội, Đà Nẵng, Cao tốc")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
                         }
+                        .padding(.vertical, 3)
+                    }
+                    
+                    ForEach(cameraManager.osmCameras) { cam in
+                        cameraRow(cam, editable: false)
                     }
                 }
             }
@@ -306,8 +391,15 @@ public struct TrafficCameraListView: View {
             .alert(isPresented: $showingNoGPSAlert) {
                 Alert(
                     title: Text("Chưa có tín hiệu GPS"),
-                    message: Text("Vui lòng chờ thiết bị định vị xong tọa độ hiện tại rồi thử lại."),
+                    message: Text("Vui lòng chờ thiết bị định vị xong tọa độ hiện tại hoặc rê bản đồ rồi chọn 'Ghim tại tâm bản đồ'."),
                     dismissButton: .default(Text("Đã hiểu"))
+                )
+            }
+            .alert(isPresented: $showingSyncAlert) {
+                Alert(
+                    title: Text("Đã nạp camera offline"),
+                    message: Text("Đã lưu các điểm camera trọng điểm vào bộ nhớ máy, sẵn sàng cảnh báo 150m không cần mạng."),
+                    dismissButton: .default(Text("Tuyệt vời"))
                 )
             }
         }
@@ -319,9 +411,7 @@ public struct TrafficCameraListView: View {
                 openCameraOnMap(cam)
             }) {
                 HStack(spacing: 12) {
-                    Image(systemName: "camera.fill")
-                        .font(.system(size: 18))
-                        .foregroundColor(.orange)
+                    CCTVCameraIconView(size: 20, color: .orange)
                         .frame(width: 34, height: 34)
                         .background(Color.orange.opacity(0.15))
                         .clipShape(Circle())

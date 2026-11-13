@@ -21,6 +21,11 @@ public final class TrafficCameraManager: ObservableObject {
     @Published public var lastPinnedCamera: TrafficCamera? = nil
     @Published public var isInspectingCameraLocation: Bool = false
     
+    // Tương tác bản đồ: Camera được chọn xem chi tiết & Tâm bản đồ khi rê
+    @Published public var selectedMapCamera: TrafficCamera? = nil
+    @Published public var currentMapCenterCoordinate: CLLocationCoordinate2D? = nil
+    @Published public var isMapPannedAwayFromUser: Bool = false
+    
     // Cự ly kích hoạt cảnh báo động theo Cài đặt (Mặc định 150 mét)
     public var warningThresholdMeters: Double {
         return AppSettings.shared.cameraWarningDistanceMeters
@@ -47,6 +52,7 @@ public final class TrafficCameraManager: ObservableObject {
     private init() {
         loadSavedCameras()
         loadOsmCache()
+        loadBuiltinVietnamCamerasIfNeeded()
         rebuildAllCamerasList()
         setupLocationTracking()
     }
@@ -169,13 +175,21 @@ public final class TrafficCameraManager: ObservableObject {
     /// Tập trung bản đồ tại vị trí Camera để người dùng kiểm tra
     public func focusMapOnCamera(_ camera: TrafficCamera) {
         isInspectingCameraLocation = true
+        selectedMapCamera = camera
         NotificationCenter.default.post(name: NSNotification.Name("FocusMapOnCamera"), object: camera)
     }
     
     /// Đưa bản đồ quay về theo dõi vị trí xe hiện tại
     public func returnToUserTracking() {
         isInspectingCameraLocation = false
+        isMapPannedAwayFromUser = false
+        selectedMapCamera = nil
         NotificationCenter.default.post(name: NSNotification.Name("RecenterMapOnUser"), object: nil)
+    }
+    
+    /// Ghim camera tại một tọa độ bất kỳ trên bản đồ (từ xa, không cần di chuyển đến nơi đó)
+    public func saveCameraAtCoordinate(_ coordinate: CLLocationCoordinate2D, title: String? = nil, speedLimit: Int? = nil) {
+        saveCameraAtCurrentLocation(title: title, speedLimit: speedLimit, customCoordinate: coordinate)
     }
     
     /// Phân giải tọa độ thành tên đường hoặc địa chỉ gần đúng, trả về "No name" nếu không tìm thấy
@@ -403,6 +417,64 @@ public final class TrafficCameraManager: ObservableObject {
             self.osmCameras = loaded
         } catch {
             print("Lỗi đọc file cache OSM camera: \(error.localizedDescription)")
+        }
+    }
+    
+    public func saveOsmCacheToDisk() {
+        do {
+            let data = try JSONEncoder().encode(osmCameras)
+            try data.write(to: osmCacheFileURL, options: .atomic)
+        } catch {
+            print("Lỗi lưu file cache OSM camera: \(error.localizedDescription)")
+        }
+    }
+    
+    // MARK: - Dữ Liệu Camera Giao Thông Trọng Điểm Việt Nam Dùng Offline Sẵn
+    
+    public func loadBuiltinVietnamCamerasIfNeeded() {
+        // Nếu bộ nhớ máy chưa có dữ liệu camera nào (hoặc lần đầu mở app), tự nạp bộ camera giao thông trọng điểm
+        guard localCameras.isEmpty && osmCameras.isEmpty else { return }
+        loadBuiltinVietnamPresetCameras(notify: false)
+    }
+    
+    public func loadBuiltinVietnamPresetCameras(notify: Bool = true) {
+        let presets: [TrafficCamera] = [
+            // TP. HỒ CHÍ MINH
+            TrafficCamera(id: "vn-hcm-01", latitude: 10.7725, longitude: 106.6980, title: "Ngã tư Nam Kỳ Khởi Nghĩa - Lê Lợi, Q.1", speedLimitKmh: 50, sourceType: .openStreetMap),
+            TrafficCamera(id: "vn-hcm-02", latitude: 10.7511, longitude: 106.6782, title: "Đại lộ Võ Văn Kiệt - Cầu Chà Và, Q.5", speedLimitKmh: 60, sourceType: .openStreetMap),
+            TrafficCamera(id: "vn-hcm-03", latitude: 10.8228, longitude: 106.6874, title: "Đại lộ Phạm Văn Đồng - Phan Văn Trị, Gò Vấp", speedLimitKmh: 60, sourceType: .openStreetMap),
+            TrafficCamera(id: "vn-hcm-04", latitude: 10.7981, longitude: 106.7410, title: "Nút giao An Phú - Mai Chí Thọ, TP. Thủ Đức", speedLimitKmh: 60, sourceType: .openStreetMap),
+            TrafficCamera(id: "vn-hcm-05", latitude: 10.7302, longitude: 106.7078, title: "Đại lộ Nguyễn Văn Linh - Nguyễn Hữu Thọ, Q.7", speedLimitKmh: 60, sourceType: .openStreetMap),
+            TrafficCamera(id: "vn-hcm-06", latitude: 10.8523, longitude: 106.7721, title: "Xa lộ Hà Nội - Ngã tư Thủ Đức", speedLimitKmh: 60, sourceType: .openStreetMap),
+            TrafficCamera(id: "vn-hcm-07", latitude: 10.7852, longitude: 106.7758, title: "Đầu Cao tốc TP.HCM - Long Thành - Dầu Giây", speedLimitKmh: 100, sourceType: .openStreetMap),
+            TrafficCamera(id: "vn-hcm-08", latitude: 10.8265, longitude: 106.6190, title: "Quốc lộ 1A - Ngã tư An Sương, Q.12", speedLimitKmh: 60, sourceType: .openStreetMap),
+            TrafficCamera(id: "vn-hcm-09", latitude: 10.7540, longitude: 106.6020, title: "Quốc lộ 1A - Ngã tư Gò Mây, Bình Tân", speedLimitKmh: 60, sourceType: .openStreetMap),
+            TrafficCamera(id: "vn-hcm-10", latitude: 10.8810, longitude: 106.7780, title: "Đại lộ Phạm Văn Đồng - Cầu vượt Linh Xuân", speedLimitKmh: 60, sourceType: .openStreetMap),
+            
+            // HÀ NỘI
+            TrafficCamera(id: "vn-hn-01", latitude: 21.0285, longitude: 105.8542, title: "Tràng Thi - Bà Triệu, Hoàn Kiếm", speedLimitKmh: 50, sourceType: .openStreetMap),
+            TrafficCamera(id: "vn-hn-02", latitude: 21.0135, longitude: 105.8080, title: "Nút giao Trần Duy Hưng - Hoàng Minh Giám, Cầu Giấy", speedLimitKmh: 50, sourceType: .openStreetMap),
+            TrafficCamera(id: "vn-hn-03", latitude: 20.9850, longitude: 105.8360, title: "Đường Vành Đai 3 - Ngã tư Giải Phóng", speedLimitKmh: 80, sourceType: .openStreetMap),
+            TrafficCamera(id: "vn-hn-04", latitude: 21.0020, longitude: 105.8450, title: "Đại Cồ Việt - Xã Đàn (Hầm Kim Liên)", speedLimitKmh: 50, sourceType: .openStreetMap),
+            TrafficCamera(id: "vn-hn-05", latitude: 20.9550, longitude: 105.8550, title: "Đầu Cao tốc Pháp Vân - Cầu Giẽ", speedLimitKmh: 100, sourceType: .openStreetMap),
+            TrafficCamera(id: "vn-hn-06", latitude: 21.0480, longitude: 105.7820, title: "Phạm Văn Đồng - Cầu Thăng Long", speedLimitKmh: 60, sourceType: .openStreetMap),
+            TrafficCamera(id: "vn-hn-07", latitude: 21.0370, longitude: 105.8820, title: "Đầu Cao tốc Hà Nội - Hải Phòng", speedLimitKmh: 120, sourceType: .openStreetMap),
+            TrafficCamera(id: "vn-hn-08", latitude: 21.0310, longitude: 105.8190, title: "Ngã tư Kim Mã - Liễu Giai, Ba Đình", speedLimitKmh: 50, sourceType: .openStreetMap),
+            TrafficCamera(id: "vn-hn-09", latitude: 21.0200, longitude: 105.7760, title: "Đại lộ Thăng Long - Lê Quang Đạo, Nam Từ Liêm", speedLimitKmh: 100, sourceType: .openStreetMap),
+            
+            // ĐÀ NẴNG
+            TrafficCamera(id: "vn-dn-01", latitude: 16.0610, longitude: 108.2230, title: "Cầu Rồng - Đường 2 Tháng 9, Hải Châu", speedLimitKmh: 50, sourceType: .openStreetMap),
+            TrafficCamera(id: "vn-dn-02", latitude: 16.0750, longitude: 108.2210, title: "Đường Bạch Đằng - Lê Duẩn, Hải Châu", speedLimitKmh: 50, sourceType: .openStreetMap),
+            TrafficCamera(id: "vn-dn-03", latitude: 16.0600, longitude: 108.1720, title: "Ngã ba Huế - Tôn Đức Thắng, Liên Chiểu", speedLimitKmh: 60, sourceType: .openStreetMap),
+            TrafficCamera(id: "vn-dn-04", latitude: 16.0350, longitude: 108.2450, title: "Đường Võ Nguyên Giáp - Hồ Xuân Hương, Ngũ Hành Sơn", speedLimitKmh: 50, sourceType: .openStreetMap),
+            TrafficCamera(id: "vn-dn-05", latitude: 16.0820, longitude: 108.2220, title: "Cầu Thuận Phước - Nguyễn Tất Thành", speedLimitKmh: 50, sourceType: .openStreetMap)
+        ]
+        
+        self.osmCameras = presets
+        saveOsmCacheToDisk()
+        rebuildAllCamerasList()
+        if notify {
+            notifyMessage("Đã nạp \(presets.count) camera giao thông trọng điểm Việt Nam!", duration: 4.0)
         }
     }
     

@@ -25,7 +25,54 @@ public struct MainDashboardView: View {
             OfflineMapView()
                 .edgesIgnoringSafeArea(.all)
             
-            // 2. Lớp giao diện HUD điều khiển nổi
+            // 2. Tâm ngắm & nút ghim camera từ xa khi người dùng kéo rê bản đồ
+            if cameraManager.isMapPannedAwayFromUser || cameraManager.isInspectingCameraLocation {
+                VStack(spacing: 8) {
+                    ZStack {
+                        Circle()
+                            .stroke(Color.orange, lineWidth: 2.5)
+                            .frame(width: 38, height: 38)
+                        Circle()
+                            .fill(Color.orange)
+                            .frame(width: 8, height: 8)
+                        CCTVCameraIconView(size: 16, color: .orange)
+                            .offset(x: 22, y: -22)
+                    }
+                    
+                    if let centerCoord = cameraManager.currentMapCenterCoordinate {
+                        Button(action: {
+                            quickCameraEditorMode = .create(coordinate: centerCoord)
+                        }) {
+                            HStack(spacing: 6) {
+                                CCTVCameraIconView(size: 14, color: .white)
+                                Text("Ghim Camera Tại Tâm Này")
+                                    .font(.system(size: 11, weight: .heavy))
+                            }
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 6)
+                            .background(
+                                LinearGradient(colors: [Color.orange, Color.red], startPoint: .leading, endPoint: .trailing)
+                            )
+                            .cornerRadius(16)
+                            .shadow(color: .orange.opacity(0.6), radius: 6)
+                        }
+                    }
+                }
+            }
+            
+            // 3. Card thông tin chi tiết camera khi nhấp vào marker camera trên bản đồ
+            if let selectedCam = cameraManager.selectedMapCamera {
+                VStack {
+                    Spacer()
+                    selectedCameraDetailCard(selectedCam)
+                        .padding(.horizontal, 14)
+                        .padding(.bottom, 140)
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                }
+            }
+            
+            // 4. Lớp giao diện HUD điều khiển nổi
             VStack(spacing: 10) {
                 // Header phía trên: Đồng hồ tốc độ lớn, GPS và Trạng thái ESP32
                 topStatusBar
@@ -72,15 +119,19 @@ public struct MainDashboardView: View {
                 HStack {
                     Spacer()
                     VStack(spacing: 12) {
-                        // NÚT ĐỊNH VỊ & GHI NHỚ CAMERA GIAO THÔNG (1 chạm tức thì + tự dò tên đường)
+                        // NÚT ĐỊNH VỊ & GHI NHỚ CAMERA GIAO THÔNG (hỗ trợ cả ghim tại xe hoặc từ xa theo tâm bản đồ)
                         Button(action: {
-                            cameraManager.saveCameraAtCurrentLocation()
+                            if (cameraManager.isMapPannedAwayFromUser || cameraManager.isInspectingCameraLocation),
+                               let center = cameraManager.currentMapCenterCoordinate {
+                                quickCameraEditorMode = .create(coordinate: center)
+                            } else {
+                                cameraManager.saveCameraAtCurrentLocation()
+                            }
                         }) {
-                            VStack(spacing: 3) {
-                                Image(systemName: "camera.badge.plus")
-                                    .font(.system(size: 18, weight: .bold))
-                                Text("Ghim Cam")
-                                    .font(.system(size: 9, weight: .black))
+                            VStack(spacing: 2) {
+                                CCTVCameraIconView(size: 20, color: .white)
+                                Text((cameraManager.isMapPannedAwayFromUser || cameraManager.isInspectingCameraLocation) ? "Ghim Tâm" : "Ghim Cam")
+                                    .font(.system(size: 8, weight: .black))
                             }
                             .foregroundColor(.white)
                             .frame(width: 52, height: 52)
@@ -133,6 +184,18 @@ public struct MainDashboardView: View {
         .sheet(isPresented: $showingOfflineMaps) { OfflineMapManagerView() }
         .sheet(isPresented: $showingRoutePlanner) { RoutePlannerView() }
         .sheet(isPresented: $showingCameraList) { TrafficCameraListView() }
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("PinCameraAtCoordinate"))) { notif in
+            if let dict = notif.object as? [String: Double],
+               let lat = dict["latitude"],
+               let lon = dict["longitude"] {
+                quickCameraEditorMode = .create(coordinate: CLLocationCoordinate2D(latitude: lat, longitude: lon))
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("EditCameraNotification"))) { notif in
+            if let cam = notif.object as? TrafficCamera {
+                quickCameraEditorMode = .edit(camera: cam)
+            }
+        }
         .onAppear {
             locationManager.requestPermissions()
             locationManager.startTracking()
@@ -142,6 +205,62 @@ public struct MainDashboardView: View {
     }
     
     // MARK: - Subviews
+    
+    /// Card chi tiết camera khi người dùng nhấp vào điểm marker trên bản đồ
+    private func selectedCameraDetailCard(_ cam: TrafficCamera) -> some View {
+        HStack(spacing: 12) {
+            CCTVCameraIconView(size: 26, color: .orange)
+                .frame(width: 42, height: 42)
+                .background(Color.orange.opacity(0.2))
+                .clipShape(Circle())
+            
+            VStack(alignment: .leading, spacing: 3) {
+                Text(cam.title)
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundColor(.white)
+                    .lineLimit(2)
+                
+                HStack(spacing: 8) {
+                    if let loc = locationManager.currentLocation {
+                        let dist = Int(loc.distance(from: CLLocation(latitude: cam.latitude, longitude: cam.longitude)))
+                        Text("Cách xe: \(dist)m")
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundColor(dist <= Int(AppSettings.shared.cameraWarningDistanceMeters) ? .red : .yellow)
+                    }
+                    if let speed = cam.speedLimitKmh {
+                        Text("• Tối đa: \(speed) km/h")
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundColor(.orange)
+                    }
+                }
+            }
+            
+            Spacer()
+            
+            // Nút sửa tên
+            Button(action: {
+                quickCameraEditorMode = .edit(camera: cam)
+            }) {
+                Image(systemName: "pencil.circle.fill")
+                    .font(.system(size: 24))
+                    .foregroundColor(.blue)
+            }
+            
+            // Nút đóng
+            Button(action: {
+                cameraManager.selectedMapCamera = nil
+            }) {
+                Image(systemName: "xmark.circle.fill")
+                    .font(.system(size: 22))
+                    .foregroundColor(.gray)
+            }
+        }
+        .padding(12)
+        .background(Color.black.opacity(0.92))
+        .cornerRadius(16)
+        .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color.orange.opacity(0.8), lineWidth: 1.5))
+        .shadow(color: .orange.opacity(0.4), radius: 8)
+    }
     
     /// Thanh trạng thái phía trên: Tốc độ, GPS, ESP32
     private var topStatusBar: some View {
@@ -202,9 +321,7 @@ public struct MainDashboardView: View {
             // 1. ƯU TIÊN SỐ 1: CẢNH BÁO CAMERA GIAO THÔNG KHI CÁCH <= 500M
             if cameraManager.isCameraWarningActive, let cam = cameraManager.activeWarningCamera {
                 HStack(spacing: 10) {
-                    Image(systemName: "camera.badge.ellipsis")
-                        .font(.system(size: 22, weight: .black))
-                        .foregroundColor(.yellow)
+                    CCTVCameraIconView(size: 26, color: .yellow)
                     
                     VStack(alignment: .leading, spacing: 2) {
                         HStack {
@@ -343,8 +460,19 @@ public struct MainDashboardView: View {
             
             // Thanh công cụ phụ: Bản đồ Offline, Camera giao thông, Kiểm tra ESP32, Cài đặt
             HStack(spacing: 8) {
-                toolButton(title: "Camera", icon: "camera.fill") { showingCameraList = true }
-                toolButton(title: "Bản đồ Offline", icon: "map.fill") { showingOfflineMaps = true }
+                Button(action: { showingCameraList = true }) {
+                    HStack(spacing: 4) {
+                        CCTVCameraIconView(size: 13, color: .white)
+                        Text("Camera")
+                            .font(.system(size: 11, weight: .semibold))
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 8)
+                    .background(Color.white.opacity(0.12))
+                    .foregroundColor(.white)
+                    .cornerRadius(10)
+                }
+                toolButton(title: "Bản đồ", icon: "map.fill") { showingOfflineMaps = true }
                 toolButton(title: "Test ESP32", icon: "cpu") { showingHardwareTest = true }
                 toolButton(title: "Cài đặt", icon: "gearshape.fill") { showingSettings = true }
             }

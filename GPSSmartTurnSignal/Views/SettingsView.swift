@@ -30,7 +30,10 @@ public struct SettingsView: View {
                 }
                 
                 // Section 2: Cảnh báo Camera Giao Thông (Mới - Mặc định 150m)
-                Section(header: Text("CẢNH BÁO CAMERA GIAO THÔNG (ĐÈN SỐ 3)")) {
+                Section(header: HStack(spacing: 6) {
+                    CCTVCameraIconView(size: 14, color: .orange)
+                    Text("CẢNH BÁO CAMERA GIAO THÔNG (ĐÈN SỐ 3)")
+                }) {
                     Toggle(isOn: $settings.isCameraWarningEnabled) {
                         VStack(alignment: .leading, spacing: 2) {
                             Text("Bật cảnh báo Camera & Đèn số 3")
