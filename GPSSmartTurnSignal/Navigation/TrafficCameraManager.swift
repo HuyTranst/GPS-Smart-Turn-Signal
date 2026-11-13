@@ -399,7 +399,6 @@ public final class TrafficCameraManager: ObservableObject {
         cameraVibrationWorkItems.forEach { $0.cancel() }
         cameraVibrationWorkItems.removeAll()
     }
-    }
     
     // MARK: - Phát Giọng Nói Cảnh Báo
     
