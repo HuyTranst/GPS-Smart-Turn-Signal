@@ -225,6 +225,14 @@ public struct OfflineMapView: UIViewRepresentable {
         longPress.minimumPressDuration = 0.45
         mapView.addGestureRecognizer(longPress)
         
+        // Thêm nhận diện cử chỉ Vuốt/Kéo bản đồ (Pan) để ngay khi người dùng chạm rê là tách khỏi chế độ bám xe
+        let panGesture = UIPanGestureRecognizer(
+            target: context.coordinator,
+            action: #selector(context.coordinator.handleMapPan(_:))
+        )
+        panGesture.delegate = context.coordinator
+        mapView.addGestureRecognizer(panGesture)
+        
         context.coordinator.mapView = mapView
         return mapView
     }
@@ -261,7 +269,7 @@ public struct OfflineMapView: UIViewRepresentable {
         Coordinator(self)
     }
     
-    public class Coordinator: NSObject, MKMapViewDelegate {
+    public class Coordinator: NSObject, MKMapViewDelegate, UIGestureRecognizerDelegate {
         var parent: OfflineMapView
         weak var mapView: MKMapView?
         private var currentPolyline: MKPolyline?
@@ -287,6 +295,7 @@ public struct OfflineMapView: UIViewRepresentable {
                 self.isFollowingUser = true
                 TrafficCameraManager.shared.isInspectingCameraLocation = false
                 TrafficCameraManager.shared.isMapPannedAwayFromUser = false
+                TrafficCameraManager.shared.isPinpointModeActive = false
                 TrafficCameraManager.shared.selectedMapCamera = nil
                 
                 guard let mv = self.mapView else { return }
@@ -316,6 +325,7 @@ public struct OfflineMapView: UIViewRepresentable {
                 
                 self.isFollowingUser = false
                 TrafficCameraManager.shared.isInspectingCameraLocation = true
+                TrafficCameraManager.shared.isMapPannedAwayFromUser = true
                 
                 let mapCamera = MKMapCamera(
                     lookingAtCenter: targetCam.coordinate,
@@ -333,7 +343,33 @@ public struct OfflineMapView: UIViewRepresentable {
                 }
             }
             
-            observers = [recenterObs, focusCamObs]
+            let focusCoordObs = NotificationCenter.default.addObserver(
+                forName: NSNotification.Name("FocusMapOnCoordinate"),
+                object: nil,
+                queue: .main
+            ) { [weak self] notification in
+                guard let self = self,
+                      let dict = notification.object as? [String: Double],
+                      let lat = dict["latitude"],
+                      let lon = dict["longitude"],
+                      let mv = self.mapView else { return }
+                
+                self.isFollowingUser = false
+                TrafficCameraManager.shared.isInspectingCameraLocation = true
+                TrafficCameraManager.shared.isMapPannedAwayFromUser = true
+                TrafficCameraManager.shared.isPinpointModeActive = true
+                
+                let target = CLLocationCoordinate2D(latitude: lat, longitude: lon)
+                let mapCamera = MKMapCamera(
+                    lookingAtCenter: target,
+                    fromDistance: 700.0,
+                    pitch: 0,
+                    heading: 0
+                )
+                mv.setCamera(mapCamera, animated: true)
+            }
+            
+            observers = [recenterObs, focusCamObs, focusCoordObs]
         }
         
         deinit {
@@ -343,7 +379,11 @@ public struct OfflineMapView: UIViewRepresentable {
         }
         
         public func handleSmartAutoZoom(location: CLLocation, speedKmh: Double, course: Double) {
-            guard isFollowingUser, let mapView = mapView else { return }
+            guard isFollowingUser,
+                  !TrafficCameraManager.shared.isMapPannedAwayFromUser,
+                  !TrafficCameraManager.shared.isInspectingCameraLocation,
+                  !TrafficCameraManager.shared.isPinpointModeActive,
+                  let mapView = mapView else { return }
             
             let now = Date()
             
@@ -499,15 +539,31 @@ public struct OfflineMapView: UIViewRepresentable {
             }
         }
         
+        // Cho phép nhận diện song song cử chỉ kéo của người dùng với hệ thống MapKit
+        public func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer) -> Bool {
+            return true
+        }
+        
+        @objc func handleMapPan(_ gesture: UIPanGestureRecognizer) {
+            if gesture.state == .began || gesture.state == .changed {
+                isFollowingUser = false
+                TrafficCameraManager.shared.isMapPannedAwayFromUser = true
+            }
+        }
+        
         public func mapViewDidChangeVisibleRegion(_ mapView: MKMapView) {
             TrafficCameraManager.shared.currentMapCenterCoordinate = mapView.centerCoordinate
             // Nếu người dùng kéo bản đồ rời xa vị trí xe, đánh dấu panned
             if let userLoc = LocationManager.shared.currentLocation {
                 let dist = userLoc.distance(from: CLLocation(latitude: mapView.centerCoordinate.latitude, longitude: mapView.centerCoordinate.longitude))
-                if dist > 150.0 {
+                if dist > 80.0 {
                     isFollowingUser = false
                     TrafficCameraManager.shared.isMapPannedAwayFromUser = true
                 }
+            } else {
+                // Ở nhà không có GPS: người dùng rê bản đồ là coi như đang xem/ghim từ xa
+                isFollowingUser = false
+                TrafficCameraManager.shared.isMapPannedAwayFromUser = true
             }
         }
         

@@ -218,6 +218,82 @@ public struct TrafficCameraListView: View {
     public var body: some View {
         NavigationView {
             List {
+                // Section 0: Cấu hình nhanh cự ly cảnh báo & nhịp rung (đồng bộ cùng Cài đặt)
+                Section(
+                    header: Text("Cài đặt cảnh báo & nhịp rung"),
+                    footer: Text("Khi xe tiến vào cự ly cài đặt, máy sẽ phát âm thanh cảnh báo, mở Relay 3 trên ESP32 và rung chu kỳ dồn dập.")
+                ) {
+                    HStack {
+                        Text("Khoảng cách cảnh báo")
+                        Spacer()
+                        Text("\(Int(AppSettings.shared.cameraWarningDistanceMeters)) mét")
+                            .bold()
+                            .foregroundColor(.orange)
+                    }
+                    Slider(value: Binding(
+                        get: { AppSettings.shared.cameraWarningDistanceMeters },
+                        set: { AppSettings.shared.cameraWarningDistanceMeters = $0 }
+                    ), in: 50...1000, step: 10)
+                    
+                    Toggle(isOn: Binding(
+                        get: { AppSettings.shared.isCameraRepeatingVibrationEnabled },
+                        set: { AppSettings.shared.isCameraRepeatingVibrationEnabled = $0 }
+                    )) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Rung lặp lại khi trong vùng camera")
+                                .font(.body.bold())
+                            Text("Rung dồn dập rồi tạm nghỉ, lặp lại cho đến khi ra khỏi vùng")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                    
+                    Stepper(value: Binding(
+                        get: { AppSettings.shared.cameraVibrationPulses },
+                        set: { AppSettings.shared.cameraVibrationPulses = $0 }
+                    ), in: 1...10) {
+                        HStack {
+                            Text("Số nhịp rung mỗi đợt")
+                                .font(.body.bold())
+                            Spacer()
+                            Text("\(AppSettings.shared.cameraVibrationPulses) lần")
+                                .bold()
+                                .foregroundColor(.orange)
+                        }
+                    }
+                    
+                    VStack(alignment: .leading, spacing: 4) {
+                        HStack {
+                            Text("Thời gian nghỉ giữa các đợt rung")
+                                .font(.body.bold())
+                            Spacer()
+                            Text(String(format: "%.1f giây", AppSettings.shared.cameraVibrationPauseSeconds))
+                                .bold()
+                                .foregroundColor(.orange)
+                        }
+                        Slider(value: Binding(
+                            get: { AppSettings.shared.cameraVibrationPauseSeconds },
+                            set: { AppSettings.shared.cameraVibrationPauseSeconds = $0 }
+                        ), in: 1.0...8.0, step: 0.5)
+                        Text("Mặc định: Rung 5 lần dồn dập, nghỉ 3.0 giây, sau đó rung tiếp.")
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+                    }
+                    
+                    Button(action: {
+                        cameraManager.triggerTestCameraVibration()
+                    }) {
+                        HStack(spacing: 8) {
+                            Image(systemName: "iphone.radiowaves.left.and.right")
+                                .foregroundColor(.orange)
+                            Text("Bấm Thử Nghiệm Nhịp Rung Ngay (\(AppSettings.shared.cameraVibrationPulses) lần)")
+                                .font(.subheadline.bold())
+                                .foregroundColor(.orange)
+                        }
+                        .padding(.vertical, 2)
+                    }
+                }
+                
                 // Section 1: Thao tác ghim camera (tại xe hoặc từ xa theo tâm bản đồ)
                 Section(
                     header: Text("Định vị & Ghim camera giao thông"),
@@ -346,11 +422,56 @@ public struct TrafficCameraListView: View {
                     }
                 }
                 
-                // Section 4: Dữ liệu Camera Offline (Trọng điểm Việt Nam & OSM)
+                // Section 4: Dữ liệu Camera Offline (Cần Thơ & Toàn Quốc)
                 Section(
                     header: Text("Dữ liệu camera offline (\(cameraManager.osmCameras.count))"),
-                    footer: Text("Bộ dữ liệu các camera phạt nguội và bắn tốc độ trọng điểm tại Hà Nội, TP.HCM, Đà Nẵng, QL1A và các tuyến cao tốc hoạt động 100% không cần Internet.")
+                    footer: Text("Bộ dữ liệu camera phạt nguội và bắn tốc độ tại TP. Cần Thơ, TP.HCM, Hà Nội, Đà Nẵng hoạt động 100% không cần Internet.")
                 ) {
+                    // Nạp riêng camera TP. Cần Thơ
+                    Button(action: {
+                        cameraManager.loadCanThoPresetCameras(notify: true)
+                        showingSyncAlert = true
+                    }) {
+                        HStack(spacing: 12) {
+                            Image(systemName: "star.circle.fill")
+                                .font(.system(size: 22))
+                                .foregroundColor(.orange)
+                            
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Nạp Dữ Liệu Camera Cần Thơ (14 Điểm)")
+                                    .font(.subheadline.bold())
+                                    .foregroundColor(.primary)
+                                Text("Ninh Kiều, Cái Răng, Bình Thủy, Cầu Cần Thơ, Võ Văn Kiệt...")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                        .padding(.vertical, 3)
+                    }
+                    
+                    // Di chuyển bản đồ đến Cần Thơ để xem
+                    Button(action: {
+                        presentationMode.wrappedValue.dismiss()
+                        cameraManager.focusMapOnCanTho()
+                    }) {
+                        HStack(spacing: 12) {
+                            Image(systemName: "map.circle.fill")
+                                .font(.system(size: 22))
+                                .foregroundColor(.blue)
+                            
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Di Chuyển Bản Đồ Đến Cần Thơ")
+                                    .font(.subheadline.bold())
+                                    .foregroundColor(.blue)
+                                Text("Đưa bản đồ về trung tâm Cần Thơ để xem hoặc ghim điểm mới")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                        .padding(.vertical, 3)
+                    }
+                    
+                    // Nạp trọn bộ Việt Nam
                     Button(action: {
                         cameraManager.loadBuiltinVietnamPresetCameras(notify: true)
                         showingSyncAlert = true
@@ -361,10 +482,10 @@ public struct TrafficCameraListView: View {
                                 .foregroundColor(.green)
                             
                             VStack(alignment: .leading, spacing: 2) {
-                                Text("Nạp Dữ Liệu Camera Trọng Điểm Việt Nam")
+                                Text("Nạp Trọn Bộ Camera Việt Nam")
                                     .font(.subheadline.bold())
                                     .foregroundColor(.primary)
-                                Text("Nạp sẵn camera phạt nguội TP.HCM, Hà Nội, Đà Nẵng, Cao tốc")
+                                Text("Gồm cả Cần Thơ, TP.HCM, Hà Nội, Đà Nẵng, Cao tốc")
                                     .font(.caption)
                                     .foregroundColor(.secondary)
                             }

@@ -26,39 +26,109 @@ public struct MainDashboardView: View {
             OfflineMapView()
                 .edgesIgnoringSafeArea(.all)
             
-            // 2. Tâm ngắm & nút ghim camera từ xa khi người dùng kéo rê bản đồ
-            if cameraManager.isMapPannedAwayFromUser || cameraManager.isInspectingCameraLocation {
-                VStack(spacing: 8) {
-                    ZStack {
-                        Circle()
-                            .stroke(Color.orange, lineWidth: 2.5)
-                            .frame(width: 38, height: 38)
-                        Circle()
-                            .fill(Color.orange)
-                            .frame(width: 8, height: 8)
-                        CCTVCameraIconView(size: 16, color: .orange)
-                            .offset(x: 22, y: -22)
+            // 2. Tâm ngắm cắm cờ & Nút ghim camera khi người dùng kéo rê bản đồ hoặc ở nhà chọn điểm
+            if cameraManager.isMapPannedAwayFromUser || cameraManager.isInspectingCameraLocation || cameraManager.isPinpointModeActive {
+                VStack(spacing: 4) {
+                    // Tag tọa độ nổi trên đầu cây ghim
+                    if let centerCoord = cameraManager.currentMapCenterCoordinate {
+                        Text("📍 \(String(format: "%.4f, %.4f", centerCoord.latitude, centerCoord.longitude))")
+                            .font(.system(size: 10, weight: .heavy, design: .monospaced))
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 3)
+                            .background(Color.black.opacity(0.85))
+                            .cornerRadius(10)
+                            .shadow(radius: 3)
                     }
                     
-                    if let centerCoord = cameraManager.currentMapCenterCoordinate {
+                    // Cây ghim Camera CCTV chỉ chính xác vào tâm bản đồ
+                    ZStack(alignment: .bottom) {
+                        // Vòng hào quang tâm ngắm trên mặt đất
+                        Circle()
+                            .stroke(Color.orange, lineWidth: 2)
+                            .frame(width: 32, height: 32)
+                            .background(Circle().fill(Color.orange.opacity(0.18)))
+                        
+                        Circle()
+                            .fill(Color.red)
+                            .frame(width: 6, height: 6)
+                        
+                        // Icon Camera nhô lên trên tâm cắm
+                        CCTVCameraIconView(size: 26, color: .orange)
+                            .offset(y: -22)
+                            .shadow(color: .black.opacity(0.5), radius: 3)
+                    }
+                    .frame(height: 54)
+                }
+                
+                // Panel điều khiển ghim camera nổi bật phía dưới (ngay trên taplo xi nhan)
+                VStack {
+                    Spacer()
+                    VStack(spacing: 8) {
+                        HStack {
+                            // Nút chuyển nhanh bản đồ về Cần Thơ
+                            Button(action: {
+                                cameraManager.focusMapOnCanTho()
+                            }) {
+                                HStack(spacing: 4) {
+                                    Image(systemName: "building.2.fill")
+                                    Text("Đến Cần Thơ")
+                                }
+                                .font(.system(size: 11, weight: .bold))
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 6)
+                                .background(Color.blue)
+                                .foregroundColor(.white)
+                                .cornerRadius(12)
+                            }
+                            
+                            Spacer()
+                            
+                            // Nút thoát chế độ chọn điểm, quay về bám xe GPS
+                            Button(action: {
+                                cameraManager.returnToUserTracking()
+                            }) {
+                                HStack(spacing: 4) {
+                                    Image(systemName: "location.fill")
+                                    Text("Về vị trí xe")
+                                }
+                                .font(.system(size: 11, weight: .bold))
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 6)
+                                .background(Color.gray.opacity(0.85))
+                                .foregroundColor(.white)
+                                .cornerRadius(12)
+                            }
+                        }
+                        
+                        // NÚT CHÍNH: ĐÁNH DẤU CAMERA TẠI ĐÂY
                         Button(action: {
-                            quickCameraEditorMode = .create(coordinate: centerCoord)
+                            if let centerCoord = cameraManager.currentMapCenterCoordinate {
+                                quickCameraEditorMode = .create(coordinate: centerCoord)
+                            }
                         }) {
-                            HStack(spacing: 6) {
-                                CCTVCameraIconView(size: 14, color: .white)
-                                Text("Ghim Camera Tại Tâm Này")
-                                    .font(.system(size: 11, weight: .heavy))
+                            HStack(spacing: 8) {
+                                CCTVCameraIconView(size: 22, color: .white)
+                                Text("ĐÁNH DẤU CAMERA TẠI ĐÂY")
+                                    .font(.system(size: 14, weight: .black))
                             }
                             .foregroundColor(.white)
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 6)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 12)
                             .background(
                                 LinearGradient(colors: [Color.orange, Color.red], startPoint: .leading, endPoint: .trailing)
                             )
-                            .cornerRadius(16)
-                            .shadow(color: .orange.opacity(0.6), radius: 6)
+                            .cornerRadius(14)
+                            .shadow(color: Color.red.opacity(0.55), radius: 8, x: 0, y: 4)
                         }
                     }
+                    .padding(10)
+                    .background(Color.black.opacity(0.88))
+                    .cornerRadius(18)
+                    .overlay(RoundedRectangle(cornerRadius: 18).stroke(Color.orange.opacity(0.6), lineWidth: 1.5))
+                    .padding(.horizontal, 14)
+                    .padding(.bottom, 150)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
                 }
             }
             
@@ -116,53 +186,90 @@ public struct MainDashboardView: View {
                 
                 Spacer()
                 
-                // Cột nút nổi bên phải: Ghim Camera và Định vị lại tâm xe
+                // Cột nút nổi bên phải: Ghim Xe, Bật Tâm Ghim, Dời Cần Thơ, Định vị lại tâm xe
                 HStack {
                     Spacer()
-                    VStack(spacing: 12) {
-                        // NÚT ĐỊNH VỊ & GHI NHỚ CAMERA GIAO THÔNG (hỗ trợ cả ghim tại xe hoặc từ xa theo tâm bản đồ)
+                    VStack(spacing: 10) {
+                        // 1. NÚT GHIM TẠI XE HIỆN TẠI (Dùng khi đang lái xe ngoài đường)
                         Button(action: {
-                            if (cameraManager.isMapPannedAwayFromUser || cameraManager.isInspectingCameraLocation),
-                               let center = cameraManager.currentMapCenterCoordinate {
-                                quickCameraEditorMode = .create(coordinate: center)
+                            if let loc = locationManager.currentLocation?.coordinate {
+                                quickCameraEditorMode = .create(coordinate: loc)
                             } else {
                                 cameraManager.saveCameraAtCurrentLocation()
                             }
                         }) {
                             VStack(spacing: 2) {
-                                CCTVCameraIconView(size: 20, color: .white)
-                                Text((cameraManager.isMapPannedAwayFromUser || cameraManager.isInspectingCameraLocation) ? "Ghim Tâm" : "Ghim Cam")
+                                Image(systemName: "location.north.circle.fill")
+                                    .font(.system(size: 18, weight: .bold))
+                                Text("Ghim Xe")
                                     .font(.system(size: 8, weight: .black))
                             }
                             .foregroundColor(.white)
-                            .frame(width: 52, height: 52)
+                            .frame(width: 48, height: 48)
+                            .background(Color.blue)
+                            .clipShape(Circle())
+                            .overlay(Circle().stroke(Color.white, lineWidth: 1.5))
+                            .shadow(radius: 4)
+                        }
+                        
+                        // 2. NÚT BẬT/TẮT TÂM GHIM BẢN ĐỒ (Dùng khi ở nhà rê bản đồ chọn điểm)
+                        Button(action: {
+                            cameraManager.isPinpointModeActive.toggle()
+                            if cameraManager.isPinpointModeActive {
+                                cameraManager.isMapPannedAwayFromUser = true
+                            }
+                        }) {
+                            VStack(spacing: 2) {
+                                CCTVCameraIconView(size: 18, color: .white)
+                                Text(cameraManager.isPinpointModeActive ? "Tắt Tâm" : "Chọn Điểm")
+                                    .font(.system(size: 8, weight: .black))
+                            }
+                            .foregroundColor(.white)
+                            .frame(width: 48, height: 48)
                             .background(
                                 LinearGradient(colors: [Color.orange, Color.red], startPoint: .topLeading, endPoint: .bottomTrailing)
                             )
                             .clipShape(Circle())
-                            .overlay(Circle().stroke(Color.white, lineWidth: 2))
-                            .shadow(color: .orange.opacity(0.6), radius: 6, x: 0, y: 3)
+                            .overlay(Circle().stroke(Color.white, lineWidth: cameraManager.isPinpointModeActive ? 2.5 : 1.5))
+                            .shadow(color: .orange.opacity(0.6), radius: 5, x: 0, y: 2)
                         }
                         
-                        // Nút Recenter đưa bản đồ về tâm xe (nổi bật khi đang xem vị trí camera)
+                        // 3. NÚT DỜI NHANH VỀ CẦN THƠ
                         Button(action: {
-                            cameraManager.returnToUserTracking()
+                            cameraManager.focusMapOnCanTho()
                         }) {
                             VStack(spacing: 2) {
-                                Image(systemName: "location.fill")
-                                    .font(.system(size: 16, weight: .bold))
-                                if cameraManager.isInspectingCameraLocation {
+                                Image(systemName: "building.2.fill")
+                                    .font(.system(size: 14, weight: .bold))
+                                Text("Cần Thơ")
+                                    .font(.system(size: 7.5, weight: .black))
+                            }
+                            .foregroundColor(.white)
+                            .frame(width: 44, height: 44)
+                            .background(Color.purple.opacity(0.9))
+                            .clipShape(Circle())
+                            .overlay(Circle().stroke(Color.white.opacity(0.8), lineWidth: 1.2))
+                            .shadow(radius: 3)
+                        }
+                        
+                        // 4. NÚT RECENTER QUAY VỀ THEO DÕI XE
+                        if cameraManager.isMapPannedAwayFromUser || cameraManager.isInspectingCameraLocation || cameraManager.isPinpointModeActive {
+                            Button(action: {
+                                cameraManager.returnToUserTracking()
+                            }) {
+                                VStack(spacing: 2) {
+                                    Image(systemName: "location.fill")
+                                        .font(.system(size: 16, weight: .bold))
                                     Text("Về xe")
                                         .font(.system(size: 8, weight: .black))
                                 }
+                                .foregroundColor(.white)
+                                .frame(width: 46, height: 46)
+                                .background(Color.black.opacity(0.85))
+                                .clipShape(Circle())
+                                .overlay(Circle().stroke(Color.cyan, lineWidth: 2))
+                                .shadow(radius: 4)
                             }
-                            .foregroundColor(.white)
-                            .frame(width: cameraManager.isInspectingCameraLocation ? 52 : 44,
-                                   height: cameraManager.isInspectingCameraLocation ? 52 : 44)
-                            .background(cameraManager.isInspectingCameraLocation ? Color.blue : Color.black.opacity(0.85))
-                            .clipShape(Circle())
-                            .overlay(Circle().stroke(Color.white.opacity(cameraManager.isInspectingCameraLocation ? 0.9 : 0.3), lineWidth: cameraManager.isInspectingCameraLocation ? 2 : 1))
-                            .shadow(radius: 4)
                         }
                     }
                 }

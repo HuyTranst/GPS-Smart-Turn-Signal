@@ -26,6 +26,7 @@ public final class TrafficCameraManager: ObservableObject {
     @Published public var selectedMapCamera: TrafficCamera? = nil
     @Published public var currentMapCenterCoordinate: CLLocationCoordinate2D? = nil
     @Published public var isMapPannedAwayFromUser: Bool = false
+    @Published public var isPinpointModeActive: Bool = false
     
     // Cự ly kích hoạt cảnh báo động theo Cài đặt (Mặc định 150 mét)
     public var warningThresholdMeters: Double {
@@ -184,8 +185,46 @@ public final class TrafficCameraManager: ObservableObject {
     public func returnToUserTracking() {
         isInspectingCameraLocation = false
         isMapPannedAwayFromUser = false
+        isPinpointModeActive = false
         selectedMapCamera = nil
         NotificationCenter.default.post(name: NSNotification.Name("RecenterMapOnUser"), object: nil)
+    }
+    
+    /// Dời bản đồ đến trung tâm TP. Cần Thơ để xem và ghim camera offline
+    public func focusMapOnCanTho() {
+        let canThoCoord = CLLocationCoordinate2D(latitude: 10.0345, longitude: 105.7842)
+        focusMapOnCoordinate(coordinate: canThoCoord, title: "TP. Cần Thơ")
+    }
+    
+    /// Dời bản đồ đến một tọa độ thành phố bất kỳ
+    public func focusMapOnCoordinate(coordinate: CLLocationCoordinate2D, title: String? = nil) {
+        isInspectingCameraLocation = true
+        isMapPannedAwayFromUser = true
+        isPinpointModeActive = true
+        currentMapCenterCoordinate = coordinate
+        NotificationCenter.default.post(
+            name: NSNotification.Name("FocusMapOnCoordinate"),
+            object: [
+                "latitude": coordinate.latitude,
+                "longitude": coordinate.longitude
+            ]
+        )
+        if let title = title {
+            notifyMessage("Đã dời bản đồ đến \(title)! Rê bản đồ để chọn ngã tư cần ghim.", duration: 3.5)
+        }
+    }
+    
+    /// Thử rung ngay theo cấu hình để người dùng kiểm tra độ rung của máy
+    public func triggerTestCameraVibration() {
+        let pulses = max(1, AppSettings.shared.cameraVibrationPulses)
+        for i in 0..<pulses {
+            let delay = Double(i) * 0.22
+            DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+                AudioServicesPlaySystemSound(kSystemSoundID_Vibrate)
+                let generator = UIImpactFeedbackGenerator(style: .heavy)
+                generator.impactOccurred()
+            }
+        }
     }
     
     /// Ghim camera tại một tọa độ bất kỳ trên bản đồ (từ xa, không cần di chuyển đến nơi đó)
@@ -484,6 +523,41 @@ public final class TrafficCameraManager: ObservableObject {
     
     // MARK: - Dữ Liệu Camera Giao Thông Trọng Điểm Việt Nam Dùng Offline Sẵn
     
+    /// 14 CAMERA GIAO THÔNG & PHẠT NGUỘI TRỌNG ĐIỂM TP. CẦN THƠ
+    public static let canThoPresets: [TrafficCamera] = [
+        TrafficCamera(id: "vn-ct-01", latitude: 10.0345, longitude: 105.7842, title: "Đại lộ Hòa Bình - Nguyễn Thái Học, Ninh Kiều, Cần Thơ", speedLimitKmh: 50, sourceType: .openStreetMap),
+        TrafficCamera(id: "vn-ct-02", latitude: 10.0260, longitude: 105.7760, title: "Đường 30 Tháng 4 - Trần Văn Hoài, Ninh Kiều, Cần Thơ", speedLimitKmh: 50, sourceType: .openStreetMap),
+        TrafficCamera(id: "vn-ct-03", latitude: 10.0298, longitude: 105.7695, title: "Đường 3 Tháng 2 - Mậu Thân (Ngã tư Xuân Khánh), Cần Thơ", speedLimitKmh: 50, sourceType: .openStreetMap),
+        TrafficCamera(id: "vn-ct-04", latitude: 10.0162, longitude: 105.7538, title: "Đường 3 Tháng 2 - Nguyễn Văn Linh (Cầu Đầu Sấu), Cần Thơ", speedLimitKmh: 60, sourceType: .openStreetMap),
+        TrafficCamera(id: "vn-ct-05", latitude: 10.0315, longitude: 105.7482, title: "Đại lộ Nguyễn Văn Cừ - Nguyễn Văn Linh (BV Đa khoa TW Cần Thơ)", speedLimitKmh: 50, sourceType: .openStreetMap),
+        TrafficCamera(id: "vn-ct-06", latitude: 10.0532, longitude: 105.7680, title: "Đại lộ Nguyễn Văn Cừ - CMT8 (Ngã tư Cồn Khương, Bình Thủy)", speedLimitKmh: 50, sourceType: .openStreetMap),
+        TrafficCamera(id: "vn-ct-07", latitude: 10.0715, longitude: 105.7535, title: "Đường Cách Mạng Tháng 8 - Lê Hồng Phong (Cầu Bình Thủy)", speedLimitKmh: 50, sourceType: .openStreetMap),
+        TrafficCamera(id: "vn-ct-08", latitude: 10.0075, longitude: 105.8115, title: "Nút giao Cầu Cần Thơ - Quốc lộ 1A (Bờ Cái Răng)", speedLimitKmh: 80, sourceType: .openStreetMap),
+        TrafficCamera(id: "vn-ct-09", latitude: 10.0035, longitude: 105.7770, title: "Quốc lộ 1A - Võ Nguyên Giáp (Nút giao IC3 / Bến xe Cần Thơ)", speedLimitKmh: 60, sourceType: .openStreetMap),
+        TrafficCamera(id: "vn-ct-10", latitude: 10.0560, longitude: 105.7420, title: "Đại lộ Võ Văn Kiệt - Nguyễn Văn Cừ (Đường Sân bay Cần Thơ)", speedLimitKmh: 70, sourceType: .openStreetMap),
+        TrafficCamera(id: "vn-ct-11", latitude: 10.0435, longitude: 105.7865, title: "Đường Trần Phú - Hùng Vương (Vòng xoay Công viên nước, Ninh Kiều)", speedLimitKmh: 50, sourceType: .openStreetMap),
+        TrafficCamera(id: "vn-ct-12", latitude: 10.0210, longitude: 105.7825, title: "Đường 30 Tháng 4 - Đường Quang Trung (Đầu Cầu Quang Trung)", speedLimitKmh: 50, sourceType: .openStreetMap),
+        TrafficCamera(id: "vn-ct-13", latitude: 10.0235, longitude: 105.7585, title: "Quốc lộ 91B - Nguyễn Văn Linh (Nút giao Metro Hưng Lợi)", speedLimitKmh: 60, sourceType: .openStreetMap),
+        TrafficCamera(id: "vn-ct-14", latitude: 9.9820, longitude: 105.8180, title: "Đường Nam Sông Hậu - Nút giao Cảng Cái Cui, Cái Răng", speedLimitKmh: 60, sourceType: .openStreetMap)
+    ]
+    
+    /// Nạp dữ liệu camera giao thông TP. Cần Thơ để dùng offline không cần mạng
+    public func loadCanThoPresetCameras(notify: Bool = true) {
+        var existingDict = [String: TrafficCamera]()
+        for cam in self.osmCameras {
+            existingDict[cam.id] = cam
+        }
+        for cam in Self.canThoPresets {
+            existingDict[cam.id] = cam
+        }
+        self.osmCameras = Array(existingDict.values).sorted(by: { $0.title < $1.title })
+        saveOsmCacheToDisk()
+        rebuildAllCamerasList()
+        if notify {
+            notifyMessage("Đã nạp 14 camera giao thông TP. Cần Thơ dùng offline!", duration: 4.0)
+        }
+    }
+    
     public func loadBuiltinVietnamCamerasIfNeeded() {
         // Nếu bộ nhớ máy chưa có dữ liệu camera nào (hoặc lần đầu mở app), tự nạp bộ camera giao thông trọng điểm
         guard localCameras.isEmpty && osmCameras.isEmpty else { return }
@@ -491,7 +565,9 @@ public final class TrafficCameraManager: ObservableObject {
     }
     
     public func loadBuiltinVietnamPresetCameras(notify: Bool = true) {
-        let presets: [TrafficCamera] = [
+        var presets: [TrafficCamera] = Self.canThoPresets
+        
+        presets.append(contentsOf: [
             // TP. HỒ CHÍ MINH
             TrafficCamera(id: "vn-hcm-01", latitude: 10.7725, longitude: 106.6980, title: "Ngã tư Nam Kỳ Khởi Nghĩa - Lê Lợi, Q.1", speedLimitKmh: 50, sourceType: .openStreetMap),
             TrafficCamera(id: "vn-hcm-02", latitude: 10.7511, longitude: 106.6782, title: "Đại lộ Võ Văn Kiệt - Cầu Chà Và, Q.5", speedLimitKmh: 60, sourceType: .openStreetMap),
@@ -521,13 +597,13 @@ public final class TrafficCameraManager: ObservableObject {
             TrafficCamera(id: "vn-dn-03", latitude: 16.0600, longitude: 108.1720, title: "Ngã ba Huế - Tôn Đức Thắng, Liên Chiểu", speedLimitKmh: 60, sourceType: .openStreetMap),
             TrafficCamera(id: "vn-dn-04", latitude: 16.0350, longitude: 108.2450, title: "Đường Võ Nguyên Giáp - Hồ Xuân Hương, Ngũ Hành Sơn", speedLimitKmh: 50, sourceType: .openStreetMap),
             TrafficCamera(id: "vn-dn-05", latitude: 16.0820, longitude: 108.2220, title: "Cầu Thuận Phước - Nguyễn Tất Thành", speedLimitKmh: 50, sourceType: .openStreetMap)
-        ]
+        ])
         
         self.osmCameras = presets
         saveOsmCacheToDisk()
         rebuildAllCamerasList()
         if notify {
-            notifyMessage("Đã nạp \(presets.count) camera giao thông trọng điểm Việt Nam!", duration: 4.0)
+            notifyMessage("Đã nạp \(presets.count) camera giao thông trọng điểm Việt Nam (gồm Cần Thơ, TP.HCM, Hà Nội, Đà Nẵng)!", duration: 4.0)
         }
     }
     

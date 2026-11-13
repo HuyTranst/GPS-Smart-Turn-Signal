@@ -63,36 +63,50 @@ public struct SettingsView: View {
                         VStack(alignment: .leading, spacing: 2) {
                             Text("Rung lặp lại khi trong vùng camera")
                                 .font(.body.bold())
-                            Text("Rung 5 lần dồn dập rồi nghỉ 3 giây, lặp lại cho đến khi ra khỏi vùng")
+                            Text("Rung dồn dập rồi tạm nghỉ, lặp lại liên tục cho đến khi ra khỏi vùng")
                                 .font(.caption)
                                 .foregroundColor(.secondary)
                         }
                     }
                     
-                    if settings.isCameraRepeatingVibrationEnabled {
-                        Stepper(value: $settings.cameraVibrationPulses, in: 1...10) {
-                            HStack {
-                                Text("Số nhịp rung mỗi đợt")
-                                Spacer()
-                                Text("\(settings.cameraVibrationPulses) lần")
-                                    .bold()
-                                    .foregroundColor(.orange)
-                            }
+                    Stepper(value: $settings.cameraVibrationPulses, in: 1...10) {
+                        HStack {
+                            Text("Số nhịp rung mỗi đợt")
+                                .font(.body.bold())
+                            Spacer()
+                            Text("\(settings.cameraVibrationPulses) lần")
+                                .bold()
+                                .foregroundColor(.orange)
                         }
-                        
-                        VStack(alignment: .leading, spacing: 4) {
-                            HStack {
-                                Text("Thời gian nghỉ giữa các đợt rung")
-                                Spacer()
-                                Text(String(format: "%.1f giây", settings.cameraVibrationPauseSeconds))
-                                    .bold()
-                                    .foregroundColor(.orange)
-                            }
-                            Slider(value: $settings.cameraVibrationPauseSeconds, in: 1.0...8.0, step: 0.5)
-                            Text("Mặc định: 3.0 giây nghỉ giữa 2 đợt rung liên tiếp.")
-                                .font(.caption2)
-                                .foregroundColor(.secondary)
+                    }
+                    
+                    VStack(alignment: .leading, spacing: 4) {
+                        HStack {
+                            Text("Thời gian nghỉ giữa các đợt rung")
+                                .font(.body.bold())
+                            Spacer()
+                            Text(String(format: "%.1f giây", settings.cameraVibrationPauseSeconds))
+                                .bold()
+                                .foregroundColor(.orange)
                         }
+                        Slider(value: $settings.cameraVibrationPauseSeconds, in: 1.0...8.0, step: 0.5)
+                        Text("Mặc định: Rung 5 lần dồn dập, nghỉ 3.0 giây, lặp lại liên tục.")
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
+                    }
+                    
+                    // Nút bấm thử rung trực tiếp
+                    Button(action: {
+                        TrafficCameraManager.shared.triggerTestCameraVibration()
+                    }) {
+                        HStack(spacing: 8) {
+                            Image(systemName: "iphone.radiowaves.left.and.right")
+                                .foregroundColor(.orange)
+                            Text("Bấm Thử Nghiệm Nhịp Rung (\(settings.cameraVibrationPulses) lần)")
+                                .font(.subheadline.bold())
+                                .foregroundColor(.orange)
+                        }
+                        .padding(.vertical, 2)
                     }
                 }
                 
