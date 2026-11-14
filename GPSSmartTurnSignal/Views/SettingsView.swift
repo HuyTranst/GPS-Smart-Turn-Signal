@@ -9,12 +9,88 @@ public struct SettingsView: View {
     @Environment(\.presentationMode) var presentationMode
     
     @State private var showingResetAlert = false
+    @State private var showingCameraList = false
+    @State private var showingOfflineMaps = false
+    @State private var showingHardwareTest = false
     
     public init() {}
     
     public var body: some View {
         NavigationView {
             Form {
+                // Section 0: Tính năng & Tiện ích (Camera, Bản đồ, Test ESP32)
+                Section(header: Text("TÍNH NĂNG & TIỆN ÍCH")) {
+                    Button(action: { showingCameraList = true }) {
+                        HStack(spacing: 12) {
+                            CCTVCameraIconView(size: 20, color: .orange)
+                                .frame(width: 32, height: 32)
+                                .background(Color.orange.opacity(0.15))
+                                .clipShape(Circle())
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Camera Giao Thông & Phạt Nguội")
+                                    .font(.body.bold())
+                                    .foregroundColor(.primary)
+                                Text("Xem danh mục camera offline Cần Thơ, Sóc Trăng, Toàn quốc")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .font(.caption.bold())
+                                .foregroundColor(.secondary)
+                        }
+                        .padding(.vertical, 2)
+                    }
+                    
+                    Button(action: { showingOfflineMaps = true }) {
+                        HStack(spacing: 12) {
+                            Image(systemName: "map.fill")
+                                .font(.system(size: 18))
+                                .foregroundColor(.blue)
+                                .frame(width: 32, height: 32)
+                                .background(Color.blue.opacity(0.15))
+                                .clipShape(Circle())
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Bản Đồ Ngoại Tuyến (Offline Maps)")
+                                    .font(.body.bold())
+                                    .foregroundColor(.primary)
+                                Text("Quản lý và tải bản đồ dùng 100% không cần mạng")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .font(.caption.bold())
+                                .foregroundColor(.secondary)
+                        }
+                        .padding(.vertical, 2)
+                    }
+                    
+                    Button(action: { showingHardwareTest = true }) {
+                        HStack(spacing: 12) {
+                            Image(systemName: "cpu")
+                                .font(.system(size: 18))
+                                .foregroundColor(.purple)
+                                .frame(width: 32, height: 32)
+                                .background(Color.purple.opacity(0.15))
+                                .clipShape(Circle())
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Kiểm Tra Phần Cứng ESP32")
+                                    .font(.body.bold())
+                                    .foregroundColor(.primary)
+                                Text("Quét thiết bị Bluetooth BLE, cấu hình Wi-Fi")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .font(.caption.bold())
+                                .foregroundColor(.secondary)
+                        }
+                        .padding(.vertical, 2)
+                    }
+                }
+                
                 // Section 1: Chế độ tự động
                 Section(header: Text("TỰ ĐỘNG ĐIỀU KHIỂN XI NHAN"),
                         footer: Text("Mọi thay đổi được tự động lưu và ghi nhớ cho các lần mở ứng dụng tiếp theo.")) {
@@ -252,40 +328,111 @@ public struct SettingsView: View {
                     Toggle("Rung phản hồi xúc giác", isOn: $settings.isHapticFeedbackEnabled)
                 }
                 
-                // Section 6: Thao tác kiểm tra nhanh relay
-                Section(header: Text("THAO TÁC RELAY NHANH")) {
-                    HStack {
-                        Button("Test Trái") {
-                            controller.triggerManual(state: .left)
-                        }
-                        .foregroundColor(.green)
-                        
-                        Spacer()
-                        
-                        Button("Test Phải") {
-                            controller.triggerManual(state: .right)
-                        }
-                        .foregroundColor(.green)
-                        
-                        Spacer()
-                        
-                        Button("Test Đèn 3") {
-                            hardware.sendCommand(.cameraWarningOn)
-                        }
-                        .foregroundColor(.orange)
-                    }
-                    
-                    Button(role: .destructive, action: {
-                        controller.turnOff()
-                        hardware.sendCommand(.cameraWarningOff)
-                    }) {
+                // Section 6: Kiểm tra thử xi nhan & Relay (Test Relay)
+                Section(header: Text("KIỂM TRA THỬ XI NHAN (TEST RELAY)")) {
+                    VStack(spacing: 12) {
+                        // Trạng thái hiện tại
                         HStack {
+                            Text("Trạng thái relay:")
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
                             Spacer()
-                            Text("TẮT TOÀN BỘ RELAY KHẨN CẤP")
-                                .bold()
-                            Spacer()
+                            if controller.currentState == .left {
+                                Text("ĐANG BẬT XI NHAN TRÁI (\(controller.remainingSeconds)s)")
+                                    .font(.subheadline.bold())
+                                    .foregroundColor(.green)
+                            } else if controller.currentState == .right {
+                                Text("ĐANG BẬT XI NHAN PHẢI (\(controller.remainingSeconds)s)")
+                                    .font(.subheadline.bold())
+                                    .foregroundColor(.green)
+                            } else {
+                                Text("ĐÃ TẮT")
+                                    .font(.subheadline.bold())
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                        
+                        // 2 button lớn test RẼ TRÁI và RẼ PHẢI
+                        HStack(spacing: 12) {
+                            Button(action: {
+                                if controller.currentState == .left {
+                                    controller.turnOff()
+                                } else {
+                                    controller.triggerManual(state: .left)
+                                }
+                            }) {
+                                HStack(spacing: 6) {
+                                    Image(systemName: "arrowtriangle.backward.fill")
+                                    Text("RẼ TRÁI")
+                                        .font(.headline.bold())
+                                }
+                                .foregroundColor(.white)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 14)
+                                .background(controller.currentState == .left ? Color.green : Color.blue)
+                                .cornerRadius(12)
+                            }
+                            .buttonStyle(BorderlessButtonStyle())
+                            
+                            Button(action: {
+                                if controller.currentState == .right {
+                                    controller.turnOff()
+                                } else {
+                                    controller.triggerManual(state: .right)
+                                }
+                            }) {
+                                HStack(spacing: 6) {
+                                    Text("RẼ PHẢI")
+                                        .font(.headline.bold())
+                                    Image(systemName: "arrowtriangle.forward.fill")
+                                }
+                                .foregroundColor(.white)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 14)
+                                .background(controller.currentState == .right ? Color.green : Color.blue)
+                                .cornerRadius(12)
+                            }
+                            .buttonStyle(BorderlessButtonStyle())
+                        }
+                        
+                        HStack(spacing: 12) {
+                            // Test mở đèn 3
+                            Button(action: {
+                                hardware.sendCommand(.cameraWarningOn)
+                            }) {
+                                HStack(spacing: 6) {
+                                    Image(systemName: "lightbulb.fill")
+                                    Text("Mở Đèn 3 (Cam)")
+                                        .font(.subheadline.bold())
+                                }
+                                .foregroundColor(.white)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 10)
+                                .background(Color.orange)
+                                .cornerRadius(10)
+                            }
+                            .buttonStyle(BorderlessButtonStyle())
+                            
+                            // Tắt toàn bộ relay
+                            Button(action: {
+                                controller.turnOff()
+                                hardware.sendCommand(.cameraWarningOff)
+                            }) {
+                                HStack(spacing: 6) {
+                                    Image(systemName: "xmark.circle.fill")
+                                    Text("Tắt Hết Relay")
+                                        .font(.subheadline.bold())
+                                }
+                                .foregroundColor(.white)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 10)
+                                .background(Color.red)
+                                .cornerRadius(10)
+                            }
+                            .buttonStyle(BorderlessButtonStyle())
                         }
                     }
+                    .padding(.vertical, 4)
                 }
                 
                 // Section 7: Khôi phục mặc định
@@ -307,6 +454,9 @@ public struct SettingsView: View {
                 }
                 Button("Hủy", role: .cancel) {}
             }
+            .sheet(isPresented: $showingCameraList) { TrafficCameraListView() }
+            .sheet(isPresented: $showingOfflineMaps) { OfflineMapManagerView() }
+            .sheet(isPresented: $showingHardwareTest) { HardwareTestView() }
         }
     }
 }

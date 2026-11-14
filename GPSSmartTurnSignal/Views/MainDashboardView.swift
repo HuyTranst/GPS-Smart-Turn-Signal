@@ -26,7 +26,7 @@ public struct MainDashboardView: View {
             OfflineMapView()
                 .edgesIgnoringSafeArea(.all)
             
-            // 2. Tâm ngắm cắm cờ & Nút ghim camera khi người dùng kéo rê bản đồ hoặc ở nhà chọn điểm
+            // 2. Tâm ngắm cắm cờ khi người dùng kéo rê bản đồ hoặc chọn điểm
             if cameraManager.isMapPannedAwayFromUser || cameraManager.isInspectingCameraLocation || cameraManager.isPinpointModeActive {
                 VStack(spacing: 4) {
                     // Tag tọa độ nổi trên đầu cây ghim
@@ -43,7 +43,6 @@ public struct MainDashboardView: View {
                     
                     // Cây ghim Camera CCTV chỉ chính xác vào tâm bản đồ
                     ZStack(alignment: .bottom) {
-                        // Vòng hào quang tâm ngắm trên mặt đất
                         Circle()
                             .stroke(Color.orange, lineWidth: 2)
                             .frame(width: 32, height: 32)
@@ -53,98 +52,11 @@ public struct MainDashboardView: View {
                             .fill(Color.red)
                             .frame(width: 6, height: 6)
                         
-                        // Icon Camera nhô lên trên tâm cắm
                         CCTVCameraIconView(size: 26, color: .orange)
                             .offset(y: -22)
                             .shadow(color: .black.opacity(0.5), radius: 3)
                     }
                     .frame(height: 54)
-                }
-                
-                // Panel điều khiển ghim camera nổi bật phía dưới (ngay trên taplo xi nhan)
-                VStack {
-                    Spacer()
-                    VStack(spacing: 8) {
-                        HStack(spacing: 8) {
-                            // Nút chuyển nhanh bản đồ về Cần Thơ
-                            Button(action: {
-                                cameraManager.focusMapOnCanTho()
-                            }) {
-                                HStack(spacing: 4) {
-                                    Image(systemName: "building.2.fill")
-                                    Text("Cần Thơ")
-                                }
-                                .font(.system(size: 11, weight: .bold))
-                                .padding(.horizontal, 8)
-                                .padding(.vertical, 6)
-                                .background(Color.blue)
-                                .foregroundColor(.white)
-                                .cornerRadius(12)
-                            }
-                            
-                            // Nút chuyển nhanh bản đồ về Sóc Trăng
-                            Button(action: {
-                                cameraManager.focusMapOnSocTrang()
-                            }) {
-                                HStack(spacing: 4) {
-                                    Image(systemName: "location.circle.fill")
-                                    Text("Sóc Trăng")
-                                }
-                                .font(.system(size: 11, weight: .bold))
-                                .padding(.horizontal, 8)
-                                .padding(.vertical, 6)
-                                .background(Color.purple)
-                                .foregroundColor(.white)
-                                .cornerRadius(12)
-                            }
-                            
-                            Spacer()
-                            
-                            // Nút thoát chế độ chọn điểm, quay về bám xe GPS
-                            Button(action: {
-                                cameraManager.returnToUserTracking()
-                            }) {
-                                HStack(spacing: 4) {
-                                    Image(systemName: "location.fill")
-                                    Text("Về vị trí xe")
-                                }
-                                .font(.system(size: 11, weight: .bold))
-                                .padding(.horizontal, 10)
-                                .padding(.vertical, 6)
-                                .background(Color.gray.opacity(0.85))
-                                .foregroundColor(.white)
-                                .cornerRadius(12)
-                            }
-                        }
-                        
-                        // NÚT CHÍNH: ĐÁNH DẤU CAMERA TẠI ĐÂY
-                        Button(action: {
-                            if let centerCoord = cameraManager.currentMapCenterCoordinate {
-                                quickCameraEditorMode = .create(coordinate: centerCoord)
-                            }
-                        }) {
-                            HStack(spacing: 8) {
-                                CCTVCameraIconView(size: 22, color: .white)
-                                Text("ĐÁNH DẤU CAMERA TẠI ĐÂY")
-                                    .font(.system(size: 14, weight: .black))
-                            }
-                            .foregroundColor(.white)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 12)
-                            .background(
-                                LinearGradient(colors: [Color.orange, Color.red], startPoint: .leading, endPoint: .trailing)
-                            )
-                            .cornerRadius(14)
-                            .shadow(color: Color.red.opacity(0.55), radius: 8, x: 0, y: 4)
-                        }
-                    }
-                    .padding(10)
-                    .background(Color.black.opacity(0.88))
-                    .cornerRadius(18)
-                    .overlay(RoundedRectangle(cornerRadius: 18).stroke(Color.orange.opacity(0.6), lineWidth: 1.5))
-                    .padding(.horizontal, 14)
-                    .padding(.bottom, 150)
-                    .transition(.move(edge: .bottom).combined(with: .opacity))
                 }
             }
             
@@ -202,7 +114,7 @@ public struct MainDashboardView: View {
                 
                 Spacer()
                 
-                // Cột nút nổi bên phải: Ghim Xe, Bật Tâm Ghim, Dời Cần Thơ, Định vị lại tâm xe
+                // Cột nút nổi bên phải: Ghim Xe, Ghim Cam (thay nút Cần Thơ), Định vị lại tâm xe
                 HStack {
                     Spacer()
                     VStack(spacing: 10) {
@@ -228,16 +140,19 @@ public struct MainDashboardView: View {
                             .shadow(radius: 4)
                         }
                         
-                        // 2. NÚT BẬT/TẮT TÂM GHIM BẢN ĐỒ (Dùng khi ở nhà rê bản đồ chọn điểm)
+                        // 2. NÚT GHIM CAM (Thay thế nút Cần Thơ - Đánh dấu camera tại tâm bản đồ đang ngắm)
                         Button(action: {
-                            cameraManager.isPinpointModeActive.toggle()
-                            if cameraManager.isPinpointModeActive {
-                                cameraManager.isMapPannedAwayFromUser = true
+                            if let center = cameraManager.currentMapCenterCoordinate {
+                                quickCameraEditorMode = .create(coordinate: center)
+                            } else if let loc = locationManager.currentLocation?.coordinate {
+                                quickCameraEditorMode = .create(coordinate: loc)
+                            } else {
+                                cameraManager.saveCameraAtCurrentLocation()
                             }
                         }) {
                             VStack(spacing: 2) {
                                 CCTVCameraIconView(size: 18, color: .white)
-                                Text(cameraManager.isPinpointModeActive ? "Tắt Tâm" : "Chọn Điểm")
+                                Text("Ghim Cam")
                                     .font(.system(size: 8, weight: .black))
                             }
                             .foregroundColor(.white)
@@ -246,29 +161,11 @@ public struct MainDashboardView: View {
                                 LinearGradient(colors: [Color.orange, Color.red], startPoint: .topLeading, endPoint: .bottomTrailing)
                             )
                             .clipShape(Circle())
-                            .overlay(Circle().stroke(Color.white, lineWidth: cameraManager.isPinpointModeActive ? 2.5 : 1.5))
+                            .overlay(Circle().stroke(Color.white, lineWidth: 1.5))
                             .shadow(color: .orange.opacity(0.6), radius: 5, x: 0, y: 2)
                         }
                         
-                        // 3. NÚT DỜI NHANH VỀ CẦN THƠ
-                        Button(action: {
-                            cameraManager.focusMapOnCanTho()
-                        }) {
-                            VStack(spacing: 2) {
-                                Image(systemName: "building.2.fill")
-                                    .font(.system(size: 14, weight: .bold))
-                                Text("Cần Thơ")
-                                    .font(.system(size: 7.5, weight: .black))
-                            }
-                            .foregroundColor(.white)
-                            .frame(width: 44, height: 44)
-                            .background(Color.purple.opacity(0.9))
-                            .clipShape(Circle())
-                            .overlay(Circle().stroke(Color.white.opacity(0.8), lineWidth: 1.2))
-                            .shadow(radius: 3)
-                        }
-                        
-                        // 4. NÚT RECENTER QUAY VỀ THEO DÕI XE
+                        // 3. NÚT RECENTER QUAY VỀ THEO DÕI XE
                         if cameraManager.isMapPannedAwayFromUser || cameraManager.isInspectingCameraLocation || cameraManager.isPinpointModeActive {
                             Button(action: {
                                 cameraManager.returnToUserTracking()
@@ -291,13 +188,97 @@ public struct MainDashboardView: View {
                 }
                 .padding(.trailing, 4)
                 
-                // Đèn xi nhan nhấp nháy mô phỏng taplo xe
-                TurnIndicatorWidget()
-                    .padding(.horizontal)
-                    .padding(.bottom, 2)
-                
-                // Cụm phím điều khiển chạm nhanh & khẩn cấp khi thấy chốt CSGT
-                bottomEmergencyControlBar
+                // 2 Button RẼ TRÁI và RẼ PHẢI nằm sát về 2 bên phía dưới cùng màn hình
+                HStack(alignment: .bottom) {
+                    // Button TRÁI sát mép trái
+                    Button(action: {
+                        if controller.currentState == .left {
+                            controller.turnOff()
+                        } else {
+                            controller.triggerManual(state: .left)
+                        }
+                    }) {
+                        HStack(spacing: 8) {
+                            Image(systemName: "arrowtriangle.backward.fill")
+                                .font(.system(size: 22, weight: .black))
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("TRÁI")
+                                    .font(.system(size: 16, weight: .heavy))
+                                if controller.currentState == .left {
+                                    Text("\(controller.remainingSeconds)s")
+                                        .font(.system(size: 11, weight: .bold, design: .monospaced))
+                                }
+                            }
+                        }
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 12)
+                        .background(controller.currentState == .left ? Color.green : Color.black.opacity(0.85))
+                        .cornerRadius(20)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 20)
+                                .stroke(controller.currentState == .left ? Color.white : Color.white.opacity(0.3), lineWidth: 1.8)
+                        )
+                        .shadow(color: controller.currentState == .left ? Color.green.opacity(0.8) : Color.black.opacity(0.4), radius: 6)
+                    }
+                    
+                    Spacer()
+                    
+                    // Nút tắt xi nhan nhanh ở giữa nếu đang bật
+                    if controller.currentState != .off || cameraManager.isCameraWarningActive {
+                        Button(action: {
+                            controller.turnOff()
+                            if cameraManager.isCameraWarningActive {
+                                hardware.sendCommand(.cameraWarningOff)
+                                cameraManager.isCameraWarningActive = false
+                            }
+                        }) {
+                            Image(systemName: "xmark.circle.fill")
+                                .font(.system(size: 26))
+                                .foregroundColor(.white)
+                                .frame(width: 44, height: 44)
+                                .background(Color.red)
+                                .clipShape(Circle())
+                                .shadow(color: Color.red.opacity(0.6), radius: 5)
+                        }
+                    }
+                    
+                    Spacer()
+                    
+                    // Button PHẢI sát mép phải
+                    Button(action: {
+                        if controller.currentState == .right {
+                            controller.turnOff()
+                        } else {
+                            controller.triggerManual(state: .right)
+                        }
+                    }) {
+                        HStack(spacing: 8) {
+                            VStack(alignment: .trailing, spacing: 2) {
+                                Text("PHẢI")
+                                    .font(.system(size: 16, weight: .heavy))
+                                if controller.currentState == .right {
+                                    Text("\(controller.remainingSeconds)s")
+                                        .font(.system(size: 11, weight: .bold, design: .monospaced))
+                                }
+                            }
+                            Image(systemName: "arrowtriangle.forward.fill")
+                                .font(.system(size: 22, weight: .black))
+                        }
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 12)
+                        .background(controller.currentState == .right ? Color.green : Color.black.opacity(0.85))
+                        .cornerRadius(20)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 20)
+                                .stroke(controller.currentState == .right ? Color.white : Color.white.opacity(0.3), lineWidth: 1.8)
+                        )
+                        .shadow(color: controller.currentState == .right ? Color.green.opacity(0.8) : Color.black.opacity(0.4), radius: 6)
+                    }
+                }
+                .padding(.horizontal, 6)
+                .padding(.bottom, 6)
             }
             .padding(.horizontal, 14)
             .padding(.top, 44) // Tránh Dynamic Island / Tai thỏ
@@ -386,19 +367,19 @@ public struct MainDashboardView: View {
         .shadow(color: .orange.opacity(0.4), radius: 8)
     }
     
-    /// Thanh trạng thái phía trên: Tốc độ, GPS, ESP32
+    /// Thanh trạng thái phía trên: Tốc độ, GPS, ESP32 và Nút Cài Đặt (Bánh Răng Cưa)
     private var topStatusBar: some View {
-        HStack(spacing: 10) {
+        HStack(spacing: 8) {
             // Đồng hồ tốc độ GPS lớn
             HStack(alignment: .lastTextBaseline, spacing: 3) {
                 Text("\(Int(locationManager.currentSpeedKmh))")
-                    .font(.system(size: 34, weight: .black, design: .rounded))
+                    .font(.system(size: 32, weight: .black, design: .rounded))
                     .foregroundColor(.white)
                 Text("km/h")
-                    .font(.system(size: 13, weight: .bold))
+                    .font(.system(size: 12, weight: .bold))
                     .foregroundColor(.white.opacity(0.8))
             }
-            .padding(.horizontal, 12)
+            .padding(.horizontal, 10)
             .padding(.vertical, 6)
             .background(Color.black.opacity(0.85))
             .cornerRadius(12)
@@ -406,36 +387,50 @@ public struct MainDashboardView: View {
             Spacer()
             
             // Trạng thái kết nối ESP32
-            Button(action: { showingHardwareTest = true }) {
-                HStack(spacing: 6) {
-                    Image(systemName: settings.connectionMode == .bluetooth ? "antenna.radiowaves.left.and.right" : "wifi")
-                        .foregroundColor(hardware.connectionStatus == .connected ? .green : .red)
-                    Circle()
-                        .fill(hardware.connectionStatus == .connected ? Color.green : Color.red)
-                        .frame(width: 8, height: 8)
-                    Text(hardware.connectionStatus == .connected ? "ESP32 SẴN SÀNG" : "MẤT KẾT NỐI")
-                        .font(.system(size: 11, weight: .bold))
-                        .foregroundColor(.white)
-                }
-                .padding(.horizontal, 10)
-                .padding(.vertical, 8)
-                .background(Color.black.opacity(0.85))
-                .cornerRadius(12)
+            HStack(spacing: 5) {
+                Image(systemName: settings.connectionMode == .bluetooth ? "antenna.radiowaves.left.and.right" : "wifi")
+                    .foregroundColor(hardware.connectionStatus == .connected ? .green : .red)
+                    .font(.system(size: 12))
+                Circle()
+                    .fill(hardware.connectionStatus == .connected ? Color.green : Color.red)
+                    .frame(width: 7, height: 7)
+                Text(hardware.connectionStatus == .connected ? "ESP32" : "MẤT KẾT NỐI")
+                    .font(.system(size: 11, weight: .bold))
+                    .foregroundColor(.white)
             }
+            .padding(.horizontal, 8)
+            .padding(.vertical, 7)
+            .background(Color.black.opacity(0.85))
+            .cornerRadius(12)
             
             // La bàn hướng di chuyển
-            HStack(spacing: 4) {
+            HStack(spacing: 3) {
                 Image(systemName: "location.north.line.fill")
                     .rotationEffect(.degrees(locationManager.currentCourse))
                     .foregroundColor(.yellow)
+                    .font(.system(size: 12))
                 Text("\(Int(locationManager.currentCourse))°")
-                    .font(.system(size: 12, weight: .bold, design: .monospaced))
+                    .font(.system(size: 11, weight: .bold, design: .monospaced))
                     .foregroundColor(.white)
             }
-            .padding(.horizontal, 10)
-            .padding(.vertical, 8)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 7)
             .background(Color.black.opacity(0.85))
             .cornerRadius(12)
+            
+            // Nút Bánh Răng Cưa Cài Đặt (Góc trên bên phải)
+            Button(action: {
+                showingSettings = true
+            }) {
+                Image(systemName: "gearshape.fill")
+                    .font(.system(size: 17, weight: .bold))
+                    .foregroundColor(.white)
+                    .frame(width: 38, height: 38)
+                    .background(Color.black.opacity(0.85))
+                    .clipShape(Circle())
+                    .overlay(Circle().stroke(Color.white.opacity(0.35), lineWidth: 1.2))
+                    .shadow(radius: 4)
+            }
         }
     }
     
@@ -521,104 +516,6 @@ public struct MainDashboardView: View {
                 .background(Color.black.opacity(0.85))
                 .cornerRadius(12)
             }
-        }
-    }
-    
-    /// Cụm phím điều khiển chạm nhanh 50m tránh chốt phạt
-    private var bottomEmergencyControlBar: some View {
-        VStack(spacing: 8) {
-            // Hàng phím to bấm nhanh bằng ngón cái khi đang lái xe
-            HStack(spacing: 10) {
-                // Phím Kích Hoạt Xi Nhan Trái Khẩn Cấp
-                Button(action: {
-                    controller.triggerManual(state: .left)
-                }) {
-                    HStack(spacing: 6) {
-                        Image(systemName: "arrowtriangle.backward.fill")
-                            .font(.title3.bold())
-                        Text("RẼ TRÁI")
-                            .font(.system(size: 16, weight: .heavy))
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 14)
-                    .background(controller.currentState == .left ? Color.green : Color.blue)
-                    .foregroundColor(.white)
-                    .cornerRadius(14)
-                }
-                
-                // Phím Tắt Khẩn Cấp Toàn Bộ Relay
-                if controller.currentState != .off || cameraManager.isCameraWarningActive {
-                    Button(action: {
-                        controller.turnOff()
-                        if cameraManager.isCameraWarningActive {
-                            hardware.sendCommand(.cameraWarningOff)
-                            cameraManager.isCameraWarningActive = false
-                        }
-                    }) {
-                        Image(systemName: "xmark.circle.fill")
-                            .font(.system(size: 24))
-                            .frame(width: 50, height: 50)
-                            .background(Color.red)
-                            .foregroundColor(.white)
-                            .cornerRadius(14)
-                    }
-                }
-                
-                // Phím Kích Hoạt Xi Nhan Phải Khẩn Cấp
-                Button(action: {
-                    controller.triggerManual(state: .right)
-                }) {
-                    HStack(spacing: 6) {
-                        Text("RẼ PHẢI")
-                            .font(.system(size: 16, weight: .heavy))
-                        Image(systemName: "arrowtriangle.forward.fill")
-                            .font(.title3.bold())
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 14)
-                    .background(controller.currentState == .right ? Color.green : Color.blue)
-                    .foregroundColor(.white)
-                    .cornerRadius(14)
-                }
-            }
-            
-            // Thanh công cụ phụ: Bản đồ Offline, Camera giao thông, Kiểm tra ESP32, Cài đặt
-            HStack(spacing: 8) {
-                Button(action: { showingCameraList = true }) {
-                    HStack(spacing: 4) {
-                        CCTVCameraIconView(size: 13, color: .white)
-                        Text("Camera")
-                            .font(.system(size: 11, weight: .semibold))
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 8)
-                    .background(Color.white.opacity(0.12))
-                    .foregroundColor(.white)
-                    .cornerRadius(10)
-                }
-                toolButton(title: "Bản đồ", icon: "map.fill") { showingOfflineMaps = true }
-                toolButton(title: "Test ESP32", icon: "cpu") { showingHardwareTest = true }
-                toolButton(title: "Cài đặt", icon: "gearshape.fill") { showingSettings = true }
-            }
-        }
-        .padding(10)
-        .background(Color.black.opacity(0.85))
-        .cornerRadius(18)
-    }
-    
-    private func toolButton(title: String, icon: String, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            HStack(spacing: 4) {
-                Image(systemName: icon)
-                    .font(.system(size: 11))
-                Text(title)
-                    .font(.system(size: 11, weight: .semibold))
-            }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 8)
-            .background(Color.white.opacity(0.12))
-            .foregroundColor(.white)
-            .cornerRadius(10)
         }
     }
 }
